@@ -6,6 +6,7 @@
         <domain includeSubdomains="true">10.0.2.2</domain>
         <!-- Your computer's IP addresses -->
         <domain includeSubdomains="true">10.246.208.64</domain>
+        <domain includeSubdomains="true">10.64.251.64</domain>
         <domain includeSubdomains="true">192.168.56.1</domain>
         <!-- Localhost -->
         <domain includeSubdomains="true">localhost</domain>

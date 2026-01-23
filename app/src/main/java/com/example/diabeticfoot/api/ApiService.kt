@@ -30,6 +30,15 @@ interface ApiService {
     @POST("patient/update_symptoms.php")
     suspend fun updateSymptoms(@Body request: SymptomsRequest): Response<ApiResponse>
     
+    @GET("patient/get_symptoms_history.php")
+    suspend fun getSymptomsHistory(@Query("patient_id") patientId: Int): Response<SymptomsHistoryResponse>
+    
+    @GET("patient/get_wound_images_history.php")
+    suspend fun getWoundImagesHistory(@Query("patient_id") patientId: Int): Response<WoundImagesHistoryResponse>
+    
+    @GET("patient/get_doctor_advice.php")
+    suspend fun getDoctorAdvice(@Query("patient_id") patientId: Int): Response<DoctorAdviceResponse>
+    
     @Multipart
     @POST("patient/upload_wound_image.php")
     suspend fun uploadWoundImage(
@@ -39,9 +48,6 @@ interface ApiService {
         @Part("is_emergency") isEmergency: RequestBody,
         @Part image: MultipartBody.Part
     ): Response<WoundImageResponse>
-    
-    @GET("patient/get_doctor_advice.php")
-    suspend fun getDoctorAdvice(@Query("patient_id") patientId: Int): Response<DoctorAdviceResponse>
     
     @POST("patient/set_reminder.php")
     suspend fun setReminder(@Body request: ReminderRequest): Response<ApiResponse>
@@ -65,4 +71,38 @@ interface ApiService {
     
     @POST("doctor/resolve_alert.php")
     suspend fun resolveAlert(@Body alertId: Map<String, Int>): Response<ApiResponse>
+    
+    // ==================== Visit Management APIs ====================
+    
+    @POST("doctor/schedule_visit.php")
+    suspend fun scheduleVisit(@Body request: ScheduleVisitRequest): Response<ApiResponse>
+    
+    @POST("doctor/get_scheduled_visits.php")
+    suspend fun getScheduledVisits(@Body request: GetScheduledVisitsRequest): Response<ScheduledVisitsResponse>
+    
+    @POST("doctor/update_visit_status.php")
+    suspend fun updateVisitStatus(@Body request: UpdateVisitStatusRequest): Response<ApiResponse>
+    
+    @POST("doctor/reschedule_visit.php")
+    suspend fun rescheduleVisit(@Body request: RescheduleVisitRequest): Response<ApiResponse>
+    
+    // ==================== Alert APIs ====================
+    
+    @GET("doctor/get_alerts.php")
+    suspend fun getAlerts(@Query("doctor_id") doctorId: Int): Response<AlertsResponse>
+    
+    @POST("doctor/mark_alert_read.php")
+    suspend fun markAlertRead(@Body request: MarkAlertReadRequest): Response<ApiResponse>
+    
+    @POST("patient/create_alert.php")
+    suspend fun createAlert(@Body request: AlertRequest): Response<ApiResponse>
+    
+    @POST("patient/update_reminder_status.php")
+    suspend fun updateReminderStatus(@Body request: UpdateReminderStatusRequest): Response<ApiResponse>
+    
+    @POST("patient/update_reminder_status_v2.php")
+    suspend fun updateReminderStatusV2(@Body request: UpdateReminderStatusRequestV2): Response<ApiResponse>
+    
+    @GET("patient/get_reminders_v2.php")
+    suspend fun getRemindersV2(@Query("patient_id") patientId: Int): Response<RemindersResponse>
 }

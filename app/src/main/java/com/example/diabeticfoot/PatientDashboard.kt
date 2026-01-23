@@ -31,12 +31,16 @@ import androidx.compose.material.icons.rounded.MonitorHeart
 import androidx.compose.material.icons.rounded.WaterDrop
 import androidx.compose.material.icons.rounded.PhotoCamera
 import androidx.compose.material.icons.rounded.ErrorOutline
+import androidx.compose.material.icons.rounded.CalendarToday
+import androidx.compose.material.icons.rounded.MedicalServices
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.unit.sp
 import com.example.diabeticfoot.ui.theme.DIABETICFootTheme
 import androidx.compose.material.icons.rounded.Gesture
 import androidx.compose.material.icons.rounded.Schedule
+import com.example.diabeticfoot.api.models.DoctorAdvice
+import kotlinx.coroutines.launch
 
 @Composable
 fun PatientDashboard(
@@ -183,22 +187,45 @@ fun PatientHomeScreenContent(
     onRemindersClick: () -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    val userManager = remember { UserManager(context) }
-    val phone = userManager.getCurrentPatientPhone() ?: ""
+    val cloudUserManager = remember { CloudUserManager(context) }
+    val coroutineScope = rememberCoroutineScope()
     
-    // Fetch patient data from the list
-    val patientData = remember(phone) { 
-        Log.d("PatientHomeScreen", "Fetching data for phone: $phone")
-        val patients = userManager.getPatients()
-        Log.d("PatientHomeScreen", "Patient list size: ${patients.size}")
-        patients.find { p -> 
-            p.phone == phone
+    var name by remember { mutableStateOf(cloudUserManager.getUserFullName() ?: "User") }
+    var sugar by remember { mutableIntStateOf(0) }
+    var risk by remember { mutableStateOf("No Data") }
+    var isLoading by remember { mutableStateOf(true) }
+    var doctorAdviceList by remember { mutableStateOf<List<DoctorAdvice>>(emptyList()) }
+    
+    // Load latest sugar level and doctor advice from backend
+    LaunchedEffect(Unit) {
+        val userId = cloudUserManager.getLoggedInUserId()
+        if (userId > 0) {
+            cloudUserManager.getSugarLevels().onSuccess { levels ->
+                if (levels.isNotEmpty()) {
+                    sugar = levels.first().sugarLevel.toInt()
+                    risk = when {
+                        sugar < 70 -> "Low Risk"
+                        sugar in 70..140 -> "Normal"
+                        sugar in 141..200 -> "High Risk"
+                        else -> "Critical"
+                    }
+                }
+                isLoading = false
+            }.onFailure {
+                isLoading = false
+            }
+            
+            // Load doctor advice
+            cloudUserManager.getPatientDoctorAdvice().onSuccess { adviceList ->
+                doctorAdviceList = adviceList
+                Log.d("PatientHomeScreen", "Loaded ${adviceList.size} doctor advice entries")
+            }.onFailure { error ->
+                Log.e("PatientHomeScreen", "Failed to load doctor advice", error)
+            }
+        } else {
+            isLoading = false
         }
     }
-    
-    val name = patientData?.name ?: "User"
-    val sugar = patientData?.lastSugar ?: 0
-    val risk = patientData?.riskLevel ?: "Low Risk"
     
     Log.d("PatientHomeScreen", "Displaying dashboard for: $name, Sugar: $sugar, Risk: $risk")
 
@@ -240,83 +267,100 @@ fun PatientHomeScreenContent(
             ) {
                 Row(
                     modifier = Modifier
-                        .padding(24.dp)
+                        .padding(20.dp)
                         .fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Column {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = "Current Status",
                             style = MaterialTheme.typography.labelLarge.copy(color = Color.Gray)
                         )
+                        Spacer(modifier = Modifier.height(8.dp))
                         Row(verticalAlignment = Alignment.Bottom) {
                             Text(
-                                text = "$sugar",
-
+                                text = if (sugar == 0) "--" else "$sugar",
                                 style = MaterialTheme.typography.displayMedium.copy(
                                     fontWeight = FontWeight.Bold,
                                     color = Color.Black
                                 )
                             )
+                            Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = " mg/dL",
+                                text = "mg/dL",
                                 style = MaterialTheme.typography.bodyMedium.copy(
                                     color = Color.Gray
                                 ),
-                                modifier = Modifier.padding(bottom = 6.dp, start = 4.dp)
+                                modifier = Modifier.padding(bottom = 8.dp)
                             )
                         }
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Surface(
-                            shape = RoundedCornerShape(50),
-                            color = when(risk) {
-                                "High Risk" -> Color(0xFFFFEBEE)
-                                "Medium Risk" -> Color(0xFFFFF8E1)
-                                else -> Color(0xFFEAF7EB)
-                            },
-                            border = androidx.compose.foundation.BorderStroke(1.dp, when(risk) {
-                                "High Risk" -> Color(0xFFF44336)
-                                "Medium Risk" -> Color(0xFFFFC107)
-                                else -> Color(0xFF4CAF50)
-                            })
-                        ) {
-                            Text(
-                                text = " $risk ",
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                                style = MaterialTheme.typography.labelMedium.copy(
-                                    color = when(risk) {
-                                        "High Risk" -> Color(0xFFF44336)
-                                        "Medium Risk" -> Color(0xFFFFC107)
-                                        else -> Color(0xFF4CAF50)
-                                    },
-                                    fontWeight = FontWeight.Bold
-                                )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = risk,
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                fontWeight = FontWeight.Medium,
+                                color = when (risk) {
+                                    "Low Risk", "Normal" -> Color(0xFF4CAF50)
+                                    "High Risk" -> Color(0xFFFF9800)
+                                    "Critical" -> Color(0xFFF44336)
+                                    else -> Color.Gray
+                                }
                             )
-                        }
+                        )
                     }
+                    
                     // Pulse Icon representation in a container
                     Surface(
                         shape = CircleShape,
-                        color = Color.White,
-                        modifier = Modifier.size(64.dp).shadow(2.dp, CircleShape),
-                        tonalElevation = 2.dp
+                        color = Color(0xFFF5F5F5),
+                        modifier = Modifier.size(56.dp)
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Icon(
                                 imageVector = Icons.Rounded.MonitorHeart,
                                 contentDescription = "Heartbeat",
                                 tint = when(risk) {
-                                    "High Risk" -> Color(0xFFF44336)
+                                    "High Risk", "Critical" -> Color(0xFFF44336)
                                     "Medium Risk" -> Color(0xFFFFC107)
                                     else -> Color(0xFF4CAF50)
                                 },
-                                modifier = Modifier.size(40.dp)
+                                modifier = Modifier.size(32.dp)
                             )
                         }
                     }
-
                 }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Doctor Advice Section
+            if (doctorAdviceList.isNotEmpty()) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Rounded.MedicalServices,
+                        contentDescription = null,
+                        tint = Color(0xFF4CAF50),
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Doctor's Advice",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Black
+                        )
+                    )
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                doctorAdviceList.forEach { advice ->
+                    DoctorAdviceCard(advice)
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
             }
 
             Spacer(modifier = Modifier.height(32.dp))
@@ -468,6 +512,121 @@ fun TaskCard(
                 contentDescription = "Go",
                 tint = Color.LightGray
             )
+        }
+    }
+}
+
+@Composable
+fun DoctorAdviceCard(advice: DoctorAdvice) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Dr. ${advice.doctorName}",
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF4A90E2)
+                    )
+                )
+                
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Status Badge
+                    val (statusColor, statusBg) = when (advice.status) {
+                        "Completed" -> Color(0xFF4CAF50) to Color(0xFFE8F5E9)
+                        "Ongoing" -> Color(0xFFFF9800) to Color(0xFFFFF3E0)
+                        else -> Color(0xFF2196F3) to Color(0xFFE3F2FD) // Pending
+                    }
+                    Box(
+                        modifier = Modifier
+                            .background(statusBg, RoundedCornerShape(12.dp))
+                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                    ) {
+                        Text(
+                            text = advice.status,
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                color = statusColor,
+                                fontWeight = FontWeight.Medium
+                            )
+                        )
+                    }
+                    
+                    // Date Badge
+                    Box(
+                        modifier = Modifier
+                            .background(Color(0xFFF5F5F5), RoundedCornerShape(12.dp))
+                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                    ) {
+                        Text(
+                            text = advice.adviceDate,
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                color = Color.Gray,
+                                fontWeight = FontWeight.Medium
+                            )
+                        )
+                    }
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            Text(
+                text = advice.adviceText,
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    color = Color.Black
+                ),
+                lineHeight = 22.sp
+            )
+            
+            // Highlight next visit date if present
+            if (!advice.nextVisitDate.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color(0xFFFFF8E1), RoundedCornerShape(8.dp))
+                        .padding(12.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.CalendarToday,
+                        contentDescription = "Next Visit",
+                        tint = Color(0xFFFFC107),
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Column {
+                        Text(
+                            text = "Next Visit",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                color = Color.Gray
+                            )
+                        )
+                        Text(
+                            text = advice.nextVisitDate,
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFFF57C00)
+                            )
+                        )
+                    }
+                }
+            }
         }
     }
 }

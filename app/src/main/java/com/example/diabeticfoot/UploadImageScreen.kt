@@ -25,6 +25,7 @@ import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.PhotoCamera
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -49,6 +50,10 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import com.example.diabeticfoot.api.models.WoundImageDetail
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
+import com.example.diabeticfoot.CloudUserManager
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -59,12 +64,37 @@ fun UploadImageScreen(
     val context = LocalContext.current
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
     var tempImageUri by remember { mutableStateOf<Uri?>(null) }
-    val userManager = remember { UserManager(context) }
+    val cloudUserManager = remember { CloudUserManager(context) }
+    val coroutineScope = rememberCoroutineScope()
+    
+    // View/Edit Mode States
+    var isEditMode by remember { mutableStateOf(false) }
+    var todaysImage by remember { mutableStateOf<WoundImageDetail?>(null) }
+    var isLoadingToday by remember { mutableStateOf(true) }
     
     // Validation States
     var isChecking by remember { mutableStateOf(false) }
     var isValid by remember { mutableStateOf(false) }
+    var isUploading by remember { mutableStateOf(false) }
     val validator = remember { FootImageValidator(context) }
+    
+    // Check if today's wound image exists
+    LaunchedEffect(Unit) {
+        cloudUserManager.getWoundImagesHistory().onSuccess { imagesList ->
+            val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+            val todaysRecord = imagesList.find { it.uploadDate == today }
+            if (todaysRecord != null) {
+                todaysImage = todaysRecord
+                isEditMode = false // Start in view mode
+            } else {
+                isEditMode = true // No record, start in edit mode
+            }
+            isLoadingToday = false
+        }.onFailure {
+            isEditMode = true // Error, allow upload
+            isLoadingToday = false
+        }
+    }
 
     // Run validation when image is selected
     LaunchedEffect(selectedImageUri) {
@@ -153,11 +183,8 @@ fun UploadImageScreen(
             // Submit Button
             Button(
                 onClick = {
-                    val phone = userManager.getCurrentPatientPhone()
-                    if (phone != null && selectedImageUri != null) {
-                        userManager.savePatientImageUri(phone, selectedImageUri.toString())
-                        
-                        // Classify the image - create classifier only when needed
+                    if (selectedImageUri != null) {
+                        isUploading = true
                         var classifier: DFUSeverityClassifier? = null
                         try {
                             classifier = DFUSeverityClassifier(context)
@@ -172,14 +199,74 @@ fun UploadImageScreen(
                             }
                             
                             val result = classifier.classifyImage(bitmap)
+                            val riskLevel = result.riskLevel
+                            val confidence = result.confidence
+                            
+                            // Get original file extension from URI
+                            val originalExtension = context.contentResolver.getType(selectedImageUri!!)?.let { mimeType ->
+                                when (mimeType) {
+                                    "image/jpeg", "image/jpg" -> "jpg"
+                                    "image/png" -> "png"
+                                    "image/webp" -> "webp"
+                                    else -> "jpg" // Default to jpg
+                                }
+                            } ?: "jpg"
+                            
+                            // Determine compression format based on extension
+                            val compressFormat = when (originalExtension) {
+                                "png" -> android.graphics.Bitmap.CompressFormat.PNG
+                                "webp" -> if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                                    android.graphics.Bitmap.CompressFormat.WEBP_LOSSY
+                                } else {
+                                    @Suppress("DEPRECATION")
+                                    android.graphics.Bitmap.CompressFormat.WEBP
+                                }
+                                else -> android.graphics.Bitmap.CompressFormat.JPEG
+                            }
+                            
+                            // Save bitmap in original format
+                            val imageFile = File(context.cacheDir, "temp_wound_${System.currentTimeMillis()}.$originalExtension")
+                            imageFile.outputStream().use { output ->
+                                bitmap.compress(compressFormat, 90, output)
+                            }
                             bitmap.recycle()
                             classifier.close()
                             
-                            // Pass the risk level (Low, Moderate, High) to navigation
-                            onSubmitClick(result.riskLevel)
+                            // Save to backend
+                            coroutineScope.launch {
+                                val isEmergency = riskLevel.equals("High", ignoreCase = true)
+                                cloudUserManager.uploadWoundImage(imageFile, riskLevel, confidence, isEmergency).onSuccess {
+                                    isUploading = false
+                                    Toast.makeText(context, "Image uploaded successfully!", Toast.LENGTH_SHORT).show()
+                                    
+                                    // Create alert for doctor
+                                    val priority = when (riskLevel.lowercase()) {
+                                        "high" -> "high"
+                                        "moderate" -> "medium"
+                                        "low" -> "low"
+                                        else -> "medium"
+                                    }
+                                    val alertMessage = "New wound image uploaded with $riskLevel risk level (${String.format("%.1f%%", confidence * 100)} confidence)"
+                                    cloudUserManager.createAlert(
+                                        patientId = cloudUserManager.getLoggedInUserId(),
+                                        alertType = "wound",
+                                        alertMessage = alertMessage,
+                                        priority = priority
+                                    )
+                                    
+                                    onSubmitClick(riskLevel)
+                                }.onFailure { e ->
+                                    isUploading = false
+                                    Log.e("UploadImageScreen", "Upload failed", e)
+                                    Toast.makeText(context, "Upload failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                                    // Still navigate even if backend fails
+                                    onSubmitClick(riskLevel)
+                                }
+                            }
                         } catch (e: Exception) {
                             Log.e("UploadImageScreen", "Error classifying image", e)
                             classifier?.close()
+                            isUploading = false
                             Toast.makeText(context, "Error analyzing image. Please try again.", Toast.LENGTH_SHORT).show()
                             // Fallback to Medium if error
                             onSubmitClick("Medium")
@@ -198,16 +285,16 @@ fun UploadImageScreen(
                     disabledContainerColor = Color(0xFFB0C4DE),
                     contentColor = Color.White
                 ),
-                enabled = selectedImageUri != null && !isChecking && isValid
+                enabled = selectedImageUri != null && !isChecking && isValid && !isUploading
             ) {
-                 if (isChecking) {
+                 if (isChecking || isUploading) {
                     CircularProgressIndicator(
                         color = Color.White,
                         modifier = Modifier.size(24.dp),
                         strokeWidth = 2.dp
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Validating...")
+                    Text(if (isUploading) "Uploading..." else "Validating...")
                 } else {
                     Text(
                         text = "Submit for Analysis",
@@ -220,6 +307,140 @@ fun UploadImageScreen(
         },
         containerColor = Color.White
     ) { innerPadding ->
+        if (isLoadingToday) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(color = Color(0xFF4A90E2))
+            }
+        } else if (!isEditMode && todaysImage != null) {
+            // View Mode - Show today's uploaded image
+            val imageData = todaysImage!! // Local val for smart cast
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .padding(horizontal = 24.dp)
+                    .verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                Text(
+                    text = "Today's Wound Image",
+                    style = MaterialTheme.typography.headlineSmall.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Black
+                    )
+                )
+                
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                // Image Display
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(300.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Color(0xFFF5F5F5)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (imageData.imagePath.isNotBlank()) {
+                        Image(
+                            painter = rememberAsyncImagePainter(
+                                com.example.diabeticfoot.api.ApiConfig.getImageUrl(imageData.imagePath)
+                            ),
+                            contentDescription = "Wound Image",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Text(
+                            text = "Image not available",
+                            color = Color.Gray
+                        )
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                // Risk Level Display
+                val (bgColor, textColor) = when (imageData.riskLevel) {
+                    "Low Risk" -> Color(0xFFE8F5E9) to Color(0xFF4CAF50)
+                    "Medium Risk" -> Color(0xFFFFF8E1) to Color(0xFFFFC107)
+                    "High Risk" -> Color(0xFFFFEBEE) to Color(0xFFF44336)
+                    else -> Color.Gray to Color.White
+                }
+                
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = bgColor),
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "Risk Level",
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                color = Color.Gray
+                            )
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = imageData.riskLevel,
+                            style = MaterialTheme.typography.titleLarge.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = textColor
+                            )
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "AI Confidence: ${(imageData.aiConfidence * 100).toInt()}%",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = Color.Gray
+                            )
+                        )
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(32.dp))
+                
+                Button(
+                    onClick = { isEditMode = true },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF4A90E2)
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Edit,
+                        contentDescription = "Edit",
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Upload New Image",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Bold
+                        )
+                    )
+                }
+                
+                Spacer(modifier = Modifier.height(24.dp))
+            }
+        } else {
+            // Edit Mode - Original upload interface
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -407,6 +628,7 @@ fun UploadImageScreen(
                      Text("Choose a different image", color = Color(0xFF4A90E2))
                  }
             }
+        }
         }
     }
 }

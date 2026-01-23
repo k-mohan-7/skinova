@@ -87,12 +87,16 @@ class CloudUserManager(private val context: Context) {
                 if (response.isSuccessful && response.body() != null) {
                     val authResponse = response.body()!!
                     if (authResponse.success) {
-                        // Save user ID locally for quick access
+                        // Save user data locally for quick access
                         saveLoggedInUser(
                             identifier,
                             authResponse.userId ?: 0,
                             isPatient,
-                            authResponse.userData?.fullName ?: ""
+                            authResponse.userData?.fullName ?: "",
+                            authResponse.userData?.phone ?: "",
+                            authResponse.userData?.email ?: "",
+                            authResponse.userData?.specialization ?: "",
+                            authResponse.userData?.hospitalName ?: ""
                         )
                     }
                     Result.success(authResponse)
@@ -107,12 +111,16 @@ class CloudUserManager(private val context: Context) {
     
     // ==================== Local Session Management ====================
     
-    fun saveLoggedInUser(identifier: String, userId: Int, isPatient: Boolean, fullName: String) {
+    fun saveLoggedInUser(identifier: String, userId: Int, isPatient: Boolean, fullName: String, phone: String = "", email: String = "", specialization: String = "", hospitalName: String = "") {
         prefs.edit().apply {
             putString("LOGGED_IN_USER", identifier)
             putInt("USER_ID", userId)
             putBoolean("IS_PATIENT", isPatient)
             putString("FULL_NAME", fullName)
+            putString("USER_PHONE", phone)
+            putString("USER_EMAIL", email)
+            putString("SPECIALIZATION", specialization)
+            putString("HOSPITAL_NAME", hospitalName)
             apply()
         }
     }
@@ -143,8 +151,30 @@ class CloudUserManager(private val context: Context) {
             remove("USER_ID")
             remove("IS_PATIENT")
             remove("FULL_NAME")
+            remove("USER_PHONE")
+            remove("USER_EMAIL")
             apply()
         }
+    }
+    
+    fun getUserFullName(): String? {
+        return prefs.getString("FULL_NAME", null)
+    }
+    
+    fun getUserPhone(): String? {
+        return prefs.getString("USER_PHONE", null)
+    }
+    
+    fun getUserEmail(): String? {
+        return prefs.getString("USER_EMAIL", null)
+    }
+    
+    fun getUserSpecialization(): String? {
+        return prefs.getString("SPECIALIZATION", null)
+    }
+    
+    fun getUserHospital(): String? {
+        return prefs.getString("HOSPITAL_NAME", null)
     }
     
     // ==================== Patient Operations ====================
@@ -166,9 +196,9 @@ class CloudUserManager(private val context: Context) {
             }
         }
     
-    suspend fun getSugarLevels(): Result<List<SugarLevel>> = withContext(Dispatchers.IO) {
+    suspend fun getSugarLevels(providedPatientId: Int? = null): Result<List<SugarLevel>> = withContext(Dispatchers.IO) {
         try {
-            val patientId = getLoggedInUserId()
+            val patientId = providedPatientId ?: getLoggedInUserId()
             val response = apiService.getSugarLevels(patientId)
             if (response.isSuccessful && response.body()?.success == true) {
                 Result.success(response.body()!!.sugarLevels ?: emptyList())
@@ -181,10 +211,25 @@ class CloudUserManager(private val context: Context) {
         }
     }
     
-    suspend fun updateSymptoms(symptoms: String): Result<ApiResponse> = withContext(Dispatchers.IO) {
+    suspend fun updateSymptoms(
+        severePain: Boolean,
+        moderatePain: Boolean,
+        mildPain: Boolean,
+        swelling: Boolean,
+        rednessColorChange: Boolean,
+        additionalNotes: String
+    ): Result<ApiResponse> = withContext(Dispatchers.IO) {
         try {
             val patientId = getLoggedInUserId()
-            val request = SymptomsRequest(patientId, symptoms)
+            val request = SymptomsRequest(
+                patientId = patientId,
+                severePain = if (severePain) 1 else 0,
+                moderatePain = if (moderatePain) 1 else 0,
+                mildPain = if (mildPain) 1 else 0,
+                swelling = if (swelling) 1 else 0,
+                rednessColorChange = if (rednessColorChange) 1 else 0,
+                additionalNotes = additionalNotes
+            )
             val response = apiService.updateSymptoms(request)
             if (response.isSuccessful && response.body() != null) {
                 Result.success(response.body()!!)
@@ -237,7 +282,9 @@ class CloudUserManager(private val context: Context) {
             val patientId = getLoggedInUserId()
             val response = apiService.getDoctorAdvice(patientId)
             if (response.isSuccessful && response.body()?.success == true) {
-                Result.success(response.body()!!.advices ?: emptyList())
+                // Backend returns 'data' field, not 'advices'
+                val adviceList = response.body()!!.data ?: emptyList()
+                Result.success(adviceList)
             } else {
                 Result.failure(Exception("Failed to get doctor advice"))
             }
@@ -343,6 +390,228 @@ class CloudUserManager(private val context: Context) {
             }
         } catch (e: Exception) {
             Log.e("CloudUserManager", "Error getting emergency alerts", e)
+            Result.failure(e)
+        }
+    }
+    
+    suspend fun getSymptomsHistory(providedPatientId: Int? = null): Result<List<SymptomDetail>> = withContext(Dispatchers.IO) {
+        try {
+            val patientId = providedPatientId ?: getLoggedInUserId()
+            val response = apiService.getSymptomsHistory(patientId)
+            if (response.isSuccessful && response.body()?.success == true) {
+                Result.success(response.body()!!.symptoms ?: emptyList())
+            } else {
+                Result.failure(Exception("Failed to get symptoms history"))
+            }
+        } catch (e: Exception) {
+            Log.e("CloudUserManager", "Error getting symptoms history", e)
+            Result.failure(e)
+        }
+    }
+    
+    suspend fun getWoundImagesHistory(providedPatientId: Int? = null): Result<List<WoundImageDetail>> = withContext(Dispatchers.IO) {
+        try {
+            val patientId = providedPatientId ?: getLoggedInUserId()
+            val response = apiService.getWoundImagesHistory(patientId)
+            if (response.isSuccessful && response.body()?.success == true) {
+                Result.success(response.body()!!.images ?: emptyList())
+            } else {
+                Result.failure(Exception("Failed to get wound images history"))
+            }
+        } catch (e: Exception) {
+            Log.e("CloudUserManager", "Error getting wound images history", e)
+            Result.failure(e)
+        }
+    }
+    
+    suspend fun getPatientDoctorAdvice(): Result<List<DoctorAdvice>> = withContext(Dispatchers.IO) {
+        try {
+            val patientId = getLoggedInUserId()
+            val response = apiService.getDoctorAdvice(patientId)
+            if (response.isSuccessful && response.body()?.success == true) {
+                // Backend returns 'data' field, not 'advices'
+                val adviceList = response.body()!!.data ?: emptyList()
+                Result.success(adviceList)
+            } else {
+                Result.failure(Exception("Failed to get doctor advice"))
+            }
+        } catch (e: Exception) {
+            Log.e("CloudUserManager", "Error getting doctor advice", e)
+            Result.failure(e)
+        }
+    }
+    
+    // ==================== Visit Management Operations ====================
+    
+    suspend fun scheduleVisit(
+        patientId: Int,
+        visitDate: String,
+        visitTime: String,
+        notes: String? = null
+    ): Result<ApiResponse> = withContext(Dispatchers.IO) {
+        try {
+            val doctorId = getLoggedInUserId()
+            val request = ScheduleVisitRequest(patientId, doctorId, visitDate, visitTime, notes)
+            val response = apiService.scheduleVisit(request)
+            if (response.isSuccessful && response.body() != null) {
+                Result.success(response.body()!!)
+            } else {
+                Result.failure(Exception("Failed to schedule visit"))
+            }
+        } catch (e: Exception) {
+            Log.e("CloudUserManager", "Error scheduling visit", e)
+            Result.failure(e)
+        }
+    }
+    
+    suspend fun getScheduledVisits(): Result<List<PatientVisit>> = withContext(Dispatchers.IO) {
+        try {
+            val doctorId = getLoggedInUserId()
+            val request = GetScheduledVisitsRequest(doctorId)
+            val response = apiService.getScheduledVisits(request)
+            if (response.isSuccessful && response.body()?.success == true) {
+                Result.success(response.body()!!.visits ?: emptyList())
+            } else {
+                Result.failure(Exception("Failed to get scheduled visits"))
+            }
+        } catch (e: Exception) {
+            Log.e("CloudUserManager", "Error getting scheduled visits", e)
+            Result.failure(e)
+        }
+    }
+    
+    suspend fun updateVisitStatus(
+        visitId: Int,
+        status: String,
+        notes: String? = null
+    ): Result<ApiResponse> = withContext(Dispatchers.IO) {
+        try {
+            val request = UpdateVisitStatusRequest(visitId, status, notes)
+            val response = apiService.updateVisitStatus(request)
+            if (response.isSuccessful && response.body() != null) {
+                Result.success(response.body()!!)
+            } else {
+                Result.failure(Exception("Failed to update visit status"))
+            }
+        } catch (e: Exception) {
+            Log.e("CloudUserManager", "Error updating visit status", e)
+            Result.failure(e)
+        }
+    }
+    
+    suspend fun rescheduleVisit(
+        visitId: Int,
+        visitDate: String,
+        visitTime: String,
+        notes: String? = null
+    ): Result<ApiResponse> = withContext(Dispatchers.IO) {
+        try {
+            val request = RescheduleVisitRequest(visitId, visitDate, visitTime, notes)
+            val response = apiService.rescheduleVisit(request)
+            if (response.isSuccessful && response.body() != null) {
+                Result.success(response.body()!!)
+            } else {
+                Result.failure(Exception("Failed to reschedule visit"))
+            }
+        } catch (e: Exception) {
+            Log.e("CloudUserManager", "Error rescheduling visit", e)
+            Result.failure(e)
+        }
+    }
+    
+    // ==================== Alert Operations ====================
+    
+    suspend fun getAlerts(): Result<List<PatientAlert>> = withContext(Dispatchers.IO) {
+        try {
+            val doctorId = getLoggedInUserId()
+            val response = apiService.getAlerts(doctorId)
+            if (response.isSuccessful && response.body()?.success == true) {
+                Result.success(response.body()!!.alerts ?: emptyList())
+            } else {
+                Result.failure(Exception("Failed to get alerts"))
+            }
+        } catch (e: Exception) {
+            Log.e("CloudUserManager", "Error getting alerts", e)
+            Result.failure(e)
+        }
+    }
+    
+    suspend fun markAlertRead(alertId: Int): Result<ApiResponse> = withContext(Dispatchers.IO) {
+        try {
+            val request = MarkAlertReadRequest(alertId)
+            val response = apiService.markAlertRead(request)
+            if (response.isSuccessful && response.body() != null) {
+                Result.success(response.body()!!)
+            } else {
+                Result.failure(Exception("Failed to mark alert as read"))
+            }
+        } catch (e: Exception) {
+            Log.e("CloudUserManager", "Error marking alert as read", e)
+            Result.failure(e)
+        }
+    }
+    
+    suspend fun createAlert(
+        patientId: Int,
+        alertType: String,
+        alertMessage: String,
+        priority: String = "medium"
+    ): Result<ApiResponse> = withContext(Dispatchers.IO) {
+        try {
+            val request = AlertRequest(patientId, alertType, alertMessage, priority)
+            val response = apiService.createAlert(request)
+            if (response.isSuccessful && response.body() != null) {
+                Result.success(response.body()!!)
+            } else {
+                Result.failure(Exception("Failed to create alert"))
+            }
+        } catch (e: Exception) {
+            Log.e("CloudUserManager", "Error creating alert", e)
+            Result.failure(e)
+        }
+    }
+    
+    suspend fun updateReminderStatus(reminderId: Int, isActive: Boolean): Result<ApiResponse> = withContext(Dispatchers.IO) {
+        try {
+            val request = UpdateReminderStatusRequest(reminderId, if (isActive) 1 else 0)
+            val response = apiService.updateReminderStatus(request)
+            if (response.isSuccessful && response.body() != null) {
+                Result.success(response.body()!!)
+            } else {
+                Result.failure(Exception("Failed to update reminder status"))
+            }
+        } catch (e: Exception) {
+            Log.e("CloudUserManager", "Error updating reminder status", e)
+            Result.failure(e)
+        }
+    }
+    
+    suspend fun updateReminderStatusV2(reminderId: Int, status: String): Result<ApiResponse> = withContext(Dispatchers.IO) {
+        try {
+            val request = UpdateReminderStatusRequestV2(reminderId, status)
+            val response = apiService.updateReminderStatusV2(request)
+            if (response.isSuccessful && response.body() != null) {
+                Result.success(response.body()!!)
+            } else {
+                Result.failure(Exception("Failed to update reminder status"))
+            }
+        } catch (e: Exception) {
+            Log.e("CloudUserManager", "Error updating reminder status", e)
+            Result.failure(e)
+        }
+    }
+    
+    suspend fun getRemindersV2(): Result<List<Reminder>> = withContext(Dispatchers.IO) {
+        try {
+            val patientId = getLoggedInUserId()
+            val response = apiService.getRemindersV2(patientId)
+            if (response.isSuccessful && response.body()?.success == true) {
+                Result.success(response.body()!!.reminders ?: emptyList())
+            } else {
+                Result.failure(Exception("Failed to get reminders"))
+            }
+        } catch (e: Exception) {
+            Log.e("CloudUserManager", "Error getting reminders", e)
             Result.failure(e)
         }
     }

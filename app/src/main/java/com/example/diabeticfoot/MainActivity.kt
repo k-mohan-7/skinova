@@ -1,10 +1,14 @@
 package com.example.diabeticfoot
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Box
@@ -12,16 +16,42 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.ui.Modifier
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.core.content.ContextCompat
 import com.example.diabeticfoot.ui.theme.DIABETICFootTheme
+import kotlinx.coroutines.launch
 
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 
 class MainActivity : ComponentActivity() {
+    
+    // Permission launcher for notifications
+    private val notificationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            Log.d("MainActivity", "Notification permission granted")
+        } else {
+            Log.d("MainActivity", "Notification permission denied")
+        }
+    }
+    
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // Request notification permission for Android 13+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
         
         // Global exception handler to catch any ultimate crash cause
         val oldHandler = Thread.getDefaultUncaughtExceptionHandler()
@@ -42,13 +72,12 @@ class MainActivity : ComponentActivity() {
                         // Check if user is already logged in (session cached in SharedPreferences)
                         val loggedInUser = cloudUserManager.getLoggedInUser()
                         
-                        // First time: show welcome screen
-                        // After login: go directly to dashboard
+                        // Determine start destination based on login status
                         val startDestination = if (loggedInUser != null) {
-                            // User is logged in - skip welcome, go to dashboard
+                            // User is logged in - skip welcome/login, go directly to dashboard
                             if (cloudUserManager.isPatient()) "patient_dashboard" else "doctor_dashboard"
                         } else {
-                            // First time or logged out - show welcome screen
+                            // Not logged in - show welcome screen
                             "welcome"
                         }
                         
@@ -120,6 +149,12 @@ class MainActivity : ComponentActivity() {
                             }
                             composable("doctor_advice") {
                                 DoctorAdviceScreen(
+                                    onBackClick = { navController.popBackStack() },
+                                    onViewFullHistory = { navController.navigate("advice_history") }
+                                )
+                            }
+                            composable("advice_history") {
+                                AdviceHistoryScreen(
                                     onBackClick = { navController.popBackStack() }
                                 )
                             }
@@ -182,10 +217,32 @@ class MainActivity : ComponentActivity() {
                             composable("sugar_level") {
                                 SugarLevelScreen(
                                     onBackClick = { navController.popBackStack() },
-                                    onSaveClick = { sugarValue ->
-                                        // TODO: Save sugarValue logic
+                                    onConfirmClick = { sugarLevel, time ->
+                                        navController.navigate("confirmSugarLevel/$sugarLevel/$time")
+                                    }
+                                )
+                            }
+                            composable(
+                                "confirmSugarLevel/{sugarLevel}/{time}",
+                                arguments = listOf(
+                                    androidx.navigation.navArgument("sugarLevel") { 
+                                        type = androidx.navigation.NavType.FloatType 
+                                    },
+                                    androidx.navigation.navArgument("time") { 
+                                        type = androidx.navigation.NavType.StringType 
+                                    }
+                                )
+                            ) { backStackEntry ->
+                                val sugarLevel = backStackEntry.arguments?.getFloat("sugarLevel") ?: 0f
+                                val time = backStackEntry.arguments?.getString("time") ?: ""
+                                
+                                ConfirmSugarLevelScreen(
+                                    sugarLevel = sugarLevel,
+                                    measurementTime = time,
+                                    onBackClick = { navController.popBackStack() },
+                                    onConfirmClick = { 
                                         navController.navigate("patient_dashboard") {
-                                            popUpTo("patient_dashboard") { inclusive = true }
+                                            popUpTo("sugar_level") { inclusive = true }
                                         }
                                     }
                                 )
@@ -202,7 +259,41 @@ class MainActivity : ComponentActivity() {
                             composable("symptoms") {
                                 SymptomsScreen(
                                     onBackClick = { navController.popBackStack() },
-                                    onSubmitClick = { navController.popBackStack() }
+                                    onConfirmClick = { symptoms, notes ->
+                                        val symptomsEncoded = java.net.URLEncoder.encode(symptoms.joinToString(","), "UTF-8")
+                                        val notesEncoded = java.net.URLEncoder.encode(notes, "UTF-8")
+                                        navController.navigate("confirmSymptoms/$symptomsEncoded/$notesEncoded")
+                                    }
+                                )
+                            }
+                            composable(
+                                "confirmSymptoms/{symptoms}/{notes}",
+                                arguments = listOf(
+                                    androidx.navigation.navArgument("symptoms") { 
+                                        type = androidx.navigation.NavType.StringType 
+                                        defaultValue = ""
+                                    },
+                                    androidx.navigation.navArgument("notes") { 
+                                        type = androidx.navigation.NavType.StringType 
+                                        defaultValue = ""
+                                    }
+                                )
+                            ) { backStackEntry ->
+                                val symptomsEncoded = backStackEntry.arguments?.getString("symptoms") ?: ""
+                                val notesEncoded = backStackEntry.arguments?.getString("notes") ?: ""
+                                val symptomsString = java.net.URLDecoder.decode(symptomsEncoded, "UTF-8")
+                                val notes = java.net.URLDecoder.decode(notesEncoded, "UTF-8")
+                                val symptomsList = if (symptomsString.isNotEmpty()) symptomsString.split(",") else emptyList()
+                                
+                                ConfirmSymptomsScreen(
+                                    selectedSymptoms = symptomsList,
+                                    additionalNotes = notes,
+                                    onBackClick = { navController.popBackStack() },
+                                    onConfirmClick = { 
+                                        navController.navigate("patient_dashboard") {
+                                            popUpTo("patient_dashboard") { inclusive = true }
+                                        }
+                                    }
                                 )
                             }
                             composable(
@@ -270,10 +361,12 @@ class MainActivity : ComponentActivity() {
                                         val encodedSymptoms = java.net.URLEncoder.encode("none", "UTF-8")
                                         val encodedTime = java.net.URLEncoder.encode("", "UTF-8")
                                         val encodedUri = java.net.URLEncoder.encode("none", "UTF-8")
+                                        val patientId = patient.id
                                         
-                                        navController.navigate("patient_details/$encodedName/$encodedPhone/$encodedInfo/$encodedSugar/$encodedRisk/$encodedSymptoms/$encodedTime/$encodedUri")
+                                        navController.navigate("patient_details/$encodedName/$encodedPhone/$encodedInfo/$encodedSugar/$encodedRisk/$encodedSymptoms/$encodedTime/$encodedUri/$patientId")
                                     },
                                     onProfileClick = { navController.navigate("doctor_profile") },
+                                    onAlertsClick = { navController.navigate("doctor_alerts") },
                                     onSettingsClick = { navController.navigate("doctor_settings") },
                                     onLogoutClick = {
                                         cloudUserManager.clearLoggedInUser()
@@ -286,8 +379,13 @@ class MainActivity : ComponentActivity() {
                                     onAboutAppClick = { navController.navigate("about_app") }
                                 )
                             }
+                            composable("doctor_alerts") {
+                                DoctorAlertsScreen(
+                                    onBackClick = { navController.popBackStack() }
+                                )
+                            }
                             composable(
-                                "patient_details/{name}/{phone}/{info}/{sugar}/{risk}/{symptoms}/{imageTime}/{imageUri}",
+                                "patient_details/{name}/{phone}/{info}/{sugar}/{risk}/{symptoms}/{imageTime}/{imageUri}/{patientId}",
                                 arguments = listOf(
                                     androidx.navigation.navArgument("name") { type = androidx.navigation.NavType.StringType },
                                     androidx.navigation.navArgument("phone") { type = androidx.navigation.NavType.StringType },
@@ -296,7 +394,8 @@ class MainActivity : ComponentActivity() {
                                     androidx.navigation.navArgument("risk") { type = androidx.navigation.NavType.StringType },
                                     androidx.navigation.navArgument("symptoms") { type = androidx.navigation.NavType.StringType },
                                     androidx.navigation.navArgument("imageTime") { type = androidx.navigation.NavType.StringType },
-                                    androidx.navigation.navArgument("imageUri") { type = androidx.navigation.NavType.StringType }
+                                    androidx.navigation.navArgument("imageUri") { type = androidx.navigation.NavType.StringType },
+                                    androidx.navigation.navArgument("patientId") { type = androidx.navigation.NavType.IntType }
                                 )
                             ) { backStackEntry ->
                                 val name = java.net.URLDecoder.decode(backStackEntry.arguments?.getString("name") ?: "", "UTF-8")
@@ -308,6 +407,7 @@ class MainActivity : ComponentActivity() {
                                 val imageTime = java.net.URLDecoder.decode(backStackEntry.arguments?.getString("imageTime") ?: "", "UTF-8")
                                 val encodedUri = backStackEntry.arguments?.getString("imageUri") ?: "none"
                                 val imageUri = if (encodedUri == "none") null else java.net.URLDecoder.decode(encodedUri, "UTF-8")
+                                val patientId = backStackEntry.arguments?.getInt("patientId") ?: 0
                                 
                                 val symptoms = if (symptomsString == "none") emptyList() else symptomsString.split(",").filter { it.isNotEmpty() }
  
@@ -319,12 +419,61 @@ class MainActivity : ComponentActivity() {
                                     symptoms = symptoms,
                                     imageTime = imageTime,
                                     imageUri = imageUri,
+                                    patientId = patientId,
                                     onBackClick = { navController.popBackStack() },
                                     onSendAdviceClick = {
-                                        navController.navigate("send_advice/$name/$phone")
+                                        navController.navigate("send_advice/$name/$phone/$patientId")
+                                    },
+                                    onSeeAllSugarReports = { id ->
+                                        navController.navigate("sugar_history/$id")
+                                    },
+                                    onSeeAllSymptoms = { id ->
+                                        navController.navigate("symptoms_history/$id")
+                                    },
+                                    onSeeAllImages = { id ->
+                                        navController.navigate("images_history/$id")
                                     }
                                 )
                             }
+                            
+                            // History screens
+                            composable(
+                                "sugar_history/{patientId}",
+                                arguments = listOf(
+                                    androidx.navigation.navArgument("patientId") { type = androidx.navigation.NavType.IntType }
+                                )
+                            ) { backStackEntry ->
+                                val patientId = backStackEntry.arguments?.getInt("patientId") ?: 0
+                                SugarLevelHistoryScreen(
+                                    patientId = patientId,
+                                    onBackClick = { navController.popBackStack() }
+                                )
+                            }
+                            composable(
+                                "symptoms_history/{patientId}",
+                                arguments = listOf(
+                                    androidx.navigation.navArgument("patientId") { type = androidx.navigation.NavType.IntType }
+                                )
+                            ) { backStackEntry ->
+                                val patientId = backStackEntry.arguments?.getInt("patientId") ?: 0
+                                SymptomsHistoryScreen(
+                                    patientId = patientId,
+                                    onBackClick = { navController.popBackStack() }
+                                )
+                            }
+                            composable(
+                                "images_history/{patientId}",
+                                arguments = listOf(
+                                    androidx.navigation.navArgument("patientId") { type = androidx.navigation.NavType.IntType }
+                                )
+                            ) { backStackEntry ->
+                                val patientId = backStackEntry.arguments?.getInt("patientId") ?: 0
+                                WoundImagesHistoryScreen(
+                                    patientId = patientId,
+                                    onBackClick = { navController.popBackStack() }
+                                )
+                            }
+                            
                             composable("doctor_profile") {
                                 DoctorProfileScreen(
                                     onHomeClick = { navController.navigate("doctor_dashboard") },
@@ -366,23 +515,49 @@ class MainActivity : ComponentActivity() {
                             }
 
                             composable(
-                                "send_advice/{name}/{phone}",
+                                "send_advice/{name}/{phone}/{patientId}",
                                 arguments = listOf(
                                     androidx.navigation.navArgument("name") { type = androidx.navigation.NavType.StringType },
-                                    androidx.navigation.navArgument("phone") { type = androidx.navigation.NavType.StringType }
+                                    androidx.navigation.navArgument("phone") { type = androidx.navigation.NavType.StringType },
+                                    androidx.navigation.navArgument("patientId") { type = androidx.navigation.NavType.IntType }
                                 )
                             ) { backStackEntry ->
                                 val name = backStackEntry.arguments?.getString("name") ?: ""
                                 val phone = backStackEntry.arguments?.getString("phone") ?: ""
+                                val patientId = backStackEntry.arguments?.getInt("patientId") ?: 0
                                 val context = androidx.compose.ui.platform.LocalContext.current
+                                val cloudUserManager = remember { CloudUserManager(context) }
+                                val coroutineScope = rememberCoroutineScope()
 
                                 SendAdviceScreen(
                                     patientName = name,
                                     onBackClick = { navController.popBackStack() },
                                     onSendClick = { notes, medication, dosage, nextVisit ->
-                                        // Doctor advice will be sent via cloudUserManager.sendAdvice() later
-                                        android.widget.Toast.makeText(context, "Advice sent!", android.widget.Toast.LENGTH_SHORT).show()
-                                        navController.popBackStack()
+                                        // Build advice text from all fields
+                                        val adviceText = buildString {
+                                            if (notes.isNotBlank()) {
+                                                append("Clinical Notes: $notes\n")
+                                            }
+                                            if (medication.isNotBlank()) {
+                                                append("Medication: $medication\n")
+                                            }
+                                            if (dosage.isNotBlank()) {
+                                                append("Dosage: $dosage\n")
+                                            }
+                                            if (nextVisit.isNotBlank()) {
+                                                append("Next Visit: $nextVisit")
+                                            }
+                                        }
+                                        
+                                        // Send advice to patient via API
+                                        coroutineScope.launch {
+                                            cloudUserManager.sendAdvice(patientId, adviceText).onSuccess {
+                                                android.widget.Toast.makeText(context, "Advice sent successfully!", android.widget.Toast.LENGTH_SHORT).show()
+                                                navController.popBackStack()
+                                            }.onFailure {
+                                                android.widget.Toast.makeText(context, "Failed to send advice: ${it.message}", android.widget.Toast.LENGTH_SHORT).show()
+                                            }
+                                        }
                                     }
                                 )
                             }

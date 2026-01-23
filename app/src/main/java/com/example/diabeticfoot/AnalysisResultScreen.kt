@@ -128,7 +128,7 @@ fun AnalysisResultScreen(
             Spacer(modifier = Modifier.weight(1f))
 
             // Action Button
-            if (riskLevel == "High") {
+            if (normalizedRisk == "High") {
                 Button(
                     onClick = onViewAlertClick,
                     modifier = Modifier
@@ -141,31 +141,7 @@ fun AnalysisResultScreen(
                     )
                 ) {
                     Text(
-                        text = "Send High Alert to Doctor",
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = FontWeight.Bold
-                        )
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                        contentDescription = null
-                    )
-                }
-            } else if (riskLevel == "Medium") {
-                Button(
-                    onClick = onViewAlertClick,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = color,
-                        contentColor = Color.White
-                    )
-                ) {
-                    Text(
-                        text = "Send Medium Alert to Doctor",
+                        text = "Send Alert to Doctor",
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.Bold
                         )
@@ -177,8 +153,9 @@ fun AnalysisResultScreen(
                     )
                 }
             } else {
+                // For Low and Medium risk, just show Done button
                 Button(
-                    onClick = onViewAlertClick,
+                    onClick = onDoneClick,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp),
@@ -189,15 +166,10 @@ fun AnalysisResultScreen(
                     )
                 ) {
                     Text(
-                        text = "Send Low Alert to Doctor",
+                        text = "Done",
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.Bold
                         )
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                        contentDescription = null
                     )
                 }
             }

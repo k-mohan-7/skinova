@@ -38,9 +38,9 @@ fun ProfileScreen(
     onEditProfileClick: () -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    val userManager = remember { UserManager(context) }
-    val phone = remember { userManager.getCurrentPatientPhone() ?: "" }
-    val name = remember { if (phone.isNotEmpty()) userManager.getPatientName(phone) else "Guest" }
+    val cloudUserManager = remember { CloudUserManager(context) }
+    val name = remember { cloudUserManager.getUserFullName() ?: "Guest" }
+    val phone = remember { cloudUserManager.getUserPhone() ?: "" }
     
 
     Scaffold(

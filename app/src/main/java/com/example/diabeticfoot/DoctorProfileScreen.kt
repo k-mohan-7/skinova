@@ -37,11 +37,12 @@ fun DoctorProfileScreen(
     onEditProfileClick: () -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    val userManager = remember { UserManager(context) }
-    val email = remember { userManager.getCurrentDoctorEmail() ?: "" }
-    val name = remember { if (email.isNotEmpty()) userManager.getDoctorName(email) else "Doctor" }
-    val spec = remember { if (email.isNotEmpty()) userManager.getDoctorSpec(email) else "Specialist" }
-    val hospital = remember { if (email.isNotEmpty()) userManager.getDoctorHospital(email) else "Hospital" }
+    val cloudUserManager = remember { CloudUserManager(context) }
+    val name = remember { cloudUserManager.getUserFullName() ?: "Doctor" }
+    val email = remember { cloudUserManager.getUserEmail() ?: "" }
+    val spec = remember { cloudUserManager.getUserSpecialization() ?: "Specialist" }
+    val hospital = remember { cloudUserManager.getUserHospital() ?: "Hospital" }
+    val phone = remember { cloudUserManager.getUserPhone() ?: "" }
 
 
     Scaffold(

@@ -67,8 +67,9 @@ fun RegisterScreen(onBackClick: () -> Unit = {}, onRegisterClick: () -> Unit = {
             Text(
                 text = "Create Account",
                 style = MaterialTheme.typography.headlineMedium.copy(
-                    fontWeight = FontWeight.Bold,
-                    color = Color.Black
+                    fontWeight = FontWeight.ExtraBold,
+                    color = Color(0xFF1A1A1A),
+                    fontSize = 32.sp
                 )
             )
             Text(

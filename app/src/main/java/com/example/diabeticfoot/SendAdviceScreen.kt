@@ -1,12 +1,16 @@
 package com.example.diabeticfoot
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -29,6 +33,9 @@ fun SendAdviceScreen(
     var medication by remember { mutableStateOf("") }
     var dosage by remember { mutableStateOf("") }
     var nextVisit by remember { mutableStateOf("") }
+    var showDatePicker by remember { mutableStateOf(false) }
+    val datePickerState = rememberDatePickerState()
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     Scaffold(
         topBar = {
@@ -196,13 +203,23 @@ fun SendAdviceScreen(
             Spacer(modifier = Modifier.height(12.dp))
             OutlinedTextField(
                 value = nextVisit,
-                onValueChange = { nextVisit = it },
-                modifier = Modifier.fillMaxWidth(),
+                onValueChange = { },
+                readOnly = true,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { showDatePicker = true },
                 placeholder = { 
                     Text(
-                        "e.g. Oct 24, 10:00 AM",
+                        "Tap to select date",
                         color = Color.LightGray
                     ) 
+                },
+                trailingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.DateRange,
+                        contentDescription = "Select Date",
+                        tint = Color(0xFF4A90E2)
+                    )
                 },
                 shape = RoundedCornerShape(12.dp),
                 colors = OutlinedTextFieldDefaults.colors(
@@ -210,9 +227,23 @@ fun SendAdviceScreen(
                     unfocusedBorderColor = Color(0xFFE0E0E0),
                     focusedContainerColor = Color.White,
                     unfocusedContainerColor = Color.White,
+                    disabledContainerColor = Color.White,
+                    disabledBorderColor = Color(0xFFE0E0E0),
                     focusedTextColor = Color.Black,
-                    unfocusedTextColor = Color.Black
-                )
+                    unfocusedTextColor = Color.Black,
+                    disabledTextColor = Color.Black
+                ),
+                enabled = false,
+                interactionSource = remember { MutableInteractionSource() }
+                    .also { interactionSource ->
+                        LaunchedEffect(interactionSource) {
+                            interactionSource.interactions.collect {
+                                if (it is PressInteraction.Release) {
+                                    showDatePicker = true
+                                }
+                            }
+                        }
+                    }
             )
 
             Spacer(modifier = Modifier.weight(1f))
@@ -238,16 +269,47 @@ fun SendAdviceScreen(
             Spacer(modifier = Modifier.height(32.dp))
         }
     }
+    
+    // DatePicker Dialog
+    if (showDatePicker) {
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let { millis ->
+                            val calendar = java.util.Calendar.getInstance()
+                            calendar.timeInMillis = millis
+                            val dateFormat = java.text.SimpleDateFormat("MMM dd, yyyy", java.util.Locale.getDefault())
+                            nextVisit = dateFormat.format(calendar.time)
+                        }
+                        showDatePicker = false
+                    }
+                ) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) {
+                    Text("Cancel")
+                }
+            }
+        ) {
+            DatePicker(
+                state = datePickerState,
+                modifier = Modifier.padding(16.dp)
+            )
+        }
+    }
+
 }
 
 @Preview(showBackground = true)
 @Composable
 fun SendAdviceScreenPreview() {
-    DIABETICFootTheme {
-        SendAdviceScreen(
-            patientName = "John Doe",
-            onBackClick = {},
-            onSendClick = { _, _, _, _ -> }
-        )
-    }
+    SendAdviceScreen(
+        patientName = "John Doe",
+        onBackClick = {},
+        onSendClick = { _, _, _, _ -> }
+    )
 }

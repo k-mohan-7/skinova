@@ -70,15 +70,22 @@ data class SugarLevelResponse(
 )
 
 data class SugarLevel(
-    @SerializedName("sugar_level") val sugarLevel: Float,
+    @SerializedName("sugar_value") val sugarLevel: Float,
     @SerializedName("measurement_date") val measurementDate: String,
-    @SerializedName("measurement_time") val measurementTime: String
+    @SerializedName("measurement_time") val measurementTime: String,
+    @SerializedName("timestamp") val timestamp: String? = null,
+    @SerializedName("notes") val notes: String? = null
 )
 
 // Symptoms
 data class SymptomsRequest(
     @SerializedName("patient_id") val patientId: Int,
-    @SerializedName("symptoms") val symptoms: String
+    @SerializedName("severe_pain") val severePain: Int = 0,
+    @SerializedName("moderate_pain") val moderatePain: Int = 0,
+    @SerializedName("mild_pain") val mildPain: Int = 0,
+    @SerializedName("swelling") val swelling: Int = 0,
+    @SerializedName("redness_color_change") val rednessColorChange: Int = 0,
+    @SerializedName("additional_notes") val additionalNotes: String = ""
 )
 
 // Wound Image Upload
@@ -99,15 +106,22 @@ data class DoctorAdviceRequest(
 
 data class DoctorAdviceResponse(
     @SerializedName("success") val success: Boolean,
-    @SerializedName("message") val message: String,
-    @SerializedName("advices") val advices: List<DoctorAdvice>? = null
+    @SerializedName("message") val message: String? = null,
+    @SerializedName("data") val data: List<DoctorAdvice>? = null
 )
 
 data class DoctorAdvice(
     @SerializedName("advice_id") val adviceId: Int,
     @SerializedName("doctor_name") val doctorName: String,
+    @SerializedName("specialization") val specialization: String? = null,
     @SerializedName("advice_text") val adviceText: String,
-    @SerializedName("advice_type") val adviceType: String,
+    @SerializedName("prescription") val prescription: String? = null,
+    @SerializedName("advice_type") val adviceType: String? = "general",
+    @SerializedName("advice_date") val adviceDate: String = "",
+    @SerializedName("advice_time") val adviceTime: String? = null,
+    @SerializedName("next_visit_date") val nextVisitDate: String? = null,
+    @SerializedName("status") val status: String = "Pending",
+    @SerializedName("is_read") val isRead: Int? = 0,
     @SerializedName("created_at") val createdAt: String
 )
 
@@ -115,7 +129,7 @@ data class DoctorAdvice(
 data class PatientListResponse(
     @SerializedName("success") val success: Boolean,
     @SerializedName("message") val message: String,
-    @SerializedName("patients") val patients: List<PatientInfo>? = null
+    @SerializedName("data") val patients: List<PatientInfo>? = null
 )
 
 data class PatientInfo(
@@ -124,7 +138,7 @@ data class PatientInfo(
     @SerializedName("phone") val phone: String,
     @SerializedName("age") val age: Int,
     @SerializedName("gender") val gender: String,
-    @SerializedName("last_sugar_level") val lastSugarLevel: Float?,
+    @SerializedName("last_sugar") val lastSugarLevel: Float?,
     @SerializedName("risk_level") val riskLevel: String?,
     @SerializedName("last_upload_date") val lastUploadDate: String?,
     @SerializedName("has_emergency") val hasEmergency: Boolean = false
@@ -185,8 +199,8 @@ data class ReminderRequest(
 
 data class RemindersResponse(
     @SerializedName("success") val success: Boolean,
-    @SerializedName("message") val message: String,
-    @SerializedName("reminders") val reminders: List<Reminder>? = null
+    @SerializedName("message") val message: String? = null,
+    @SerializedName("data") val reminders: List<Reminder>? = null
 )
 
 data class Reminder(
@@ -194,6 +208,140 @@ data class Reminder(
     @SerializedName("reminder_title") val reminderTitle: String,
     @SerializedName("reminder_time") val reminderTime: String,
     @SerializedName("reminder_date") val reminderDate: String,
-    @SerializedName("reminder_type") val reminderType: String,
-    @SerializedName("is_active") val isActive: Boolean
+    @SerializedName("reminder_type") val reminderType: String? = "medication",
+    @SerializedName("is_active") val isActive: Boolean = true,
+    @SerializedName("status") val status: String? = "pending", // pending, completed, missed, cancelled
+    @SerializedName("completed_at") val completedAt: String? = null,
+    @SerializedName("is_recurring") val isRecurring: Int? = 0,
+    @SerializedName("created_at") val createdAt: String? = null
 )
+
+// Update Reminder Status
+data class UpdateReminderStatusRequestV2(
+    @SerializedName("reminder_id") val reminderId: Int,
+    @SerializedName("status") val status: String // pending, completed, missed, cancelled
+)
+
+// Symptoms History
+data class SymptomsHistoryResponse(
+    @SerializedName("success") val success: Boolean,
+    @SerializedName("message") val message: String? = null,
+    @SerializedName("symptoms") val symptoms: List<SymptomDetail>? = null,
+    @SerializedName("count") val count: Int = 0
+)
+
+data class SymptomDetail(
+    @SerializedName("symptom_id") val symptomId: Int,
+    @SerializedName("patient_id") val patientId: Int,
+    @SerializedName("severe_pain") val severePain: Int,
+    @SerializedName("moderate_pain") val moderatePain: Int,
+    @SerializedName("mild_pain") val mildPain: Int,
+    @SerializedName("swelling") val swelling: Int,
+    @SerializedName("redness_color_change") val rednessColorChange: Int,
+    @SerializedName("additional_notes") val additionalNotes: String?,
+    @SerializedName("symptom_date") val symptomDate: String,
+    @SerializedName("created_at") val createdAt: String
+)
+
+// Wound Images History
+data class WoundImagesHistoryResponse(
+    @SerializedName("success") val success: Boolean,
+    @SerializedName("message") val message: String? = null,
+    @SerializedName("images") val images: List<WoundImageDetail>? = null,
+    @SerializedName("count") val count: Int = 0
+)
+
+data class WoundImageDetail(
+    @SerializedName("wound_id") val woundId: Int,
+    @SerializedName("patient_id") val patientId: Int,
+    @SerializedName("image_path") val imagePath: String,
+    @SerializedName("risk_level") val riskLevel: String,
+    @SerializedName("ai_confidence") val aiConfidence: Float,
+    @SerializedName("upload_date") val uploadDate: String,
+    @SerializedName("upload_time") val uploadTime: String,
+    @SerializedName("is_emergency") val isEmergency: Int,
+    @SerializedName("created_at") val createdAt: String
+)
+
+// Patient Visits
+data class ScheduleVisitRequest(
+    @SerializedName("patient_id") val patientId: Int,
+    @SerializedName("doctor_id") val doctorId: Int,
+    @SerializedName("visit_date") val visitDate: String,
+    @SerializedName("visit_time") val visitTime: String,
+    @SerializedName("notes") val notes: String? = null
+)
+
+data class UpdateVisitStatusRequest(
+    @SerializedName("visit_id") val visitId: Int,
+    @SerializedName("status") val status: String,
+    @SerializedName("notes") val notes: String? = null
+)
+
+data class RescheduleVisitRequest(
+    @SerializedName("visit_id") val visitId: Int,
+    @SerializedName("visit_date") val visitDate: String,
+    @SerializedName("visit_time") val visitTime: String,
+    @SerializedName("notes") val notes: String? = null
+)
+
+data class GetScheduledVisitsRequest(
+    @SerializedName("doctor_id") val doctorId: Int
+)
+
+data class ScheduledVisitsResponse(
+    @SerializedName("success") val success: Boolean,
+    @SerializedName("message") val message: String? = null,
+    @SerializedName("visits") val visits: List<PatientVisit>? = null,
+    @SerializedName("count") val count: Int = 0
+)
+
+data class PatientVisit(
+    @SerializedName("visit_id") val visitId: Int,
+    @SerializedName("patient_id") val patientId: Int,
+    @SerializedName("visit_date") val visitDate: String,
+    @SerializedName("visit_time") val visitTime: String,
+    @SerializedName("status") val status: String,
+    @SerializedName("notes") val notes: String?,
+    @SerializedName("patient_name") val patientName: String,
+    @SerializedName("patient_phone") val patientPhone: String,
+    @SerializedName("created_at") val createdAt: String,
+    @SerializedName("updated_at") val updatedAt: String
+)
+
+// Patient Alerts
+data class AlertRequest(
+    @SerializedName("patient_id") val patientId: Int,
+    @SerializedName("alert_type") val alertType: String,
+    @SerializedName("alert_message") val alertMessage: String,
+    @SerializedName("priority") val priority: String = "medium"
+)
+
+data class AlertsResponse(
+    @SerializedName("success") val success: Boolean,
+    @SerializedName("message") val message: String? = null,
+    @SerializedName("alerts") val alerts: List<PatientAlert>? = null,
+    @SerializedName("count") val count: Int = 0
+)
+
+data class PatientAlert(
+    @SerializedName("alert_id") val alertId: Int,
+    @SerializedName("patient_id") val patientId: Int,
+    @SerializedName("patient_name") val patientName: String,
+    @SerializedName("alert_type") val alertType: String,
+    @SerializedName("alert_message") val alertMessage: String,
+    @SerializedName("priority") val priority: String,
+    @SerializedName("is_read") val isRead: Int,
+    @SerializedName("created_at") val createdAt: String,
+    @SerializedName("alert_date") val alertDate: String
+)
+
+data class MarkAlertReadRequest(
+    @SerializedName("alert_id") val alertId: Int
+)
+
+data class UpdateReminderStatusRequest(
+    @SerializedName("reminder_id") val reminderId: Int,
+    @SerializedName("is_active") val isActive: Int
+)
+

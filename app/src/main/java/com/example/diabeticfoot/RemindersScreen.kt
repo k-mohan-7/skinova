@@ -6,6 +6,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.rounded.Medication
 import androidx.compose.material.icons.rounded.PhotoCamera
@@ -22,6 +23,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.diabeticfoot.ui.theme.DIABETICFootTheme
 import androidx.compose.ui.draw.clip
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
+import com.example.diabeticfoot.CloudUserManager
+import com.example.diabeticfoot.api.models.Reminder
+import androidx.compose.ui.text.style.TextAlign
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -29,8 +35,21 @@ fun RemindersScreen(
     onBackClick: () -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    val userManager = remember { UserManager(context) }
-    val phone = userManager.getCurrentPatientPhone() ?: ""
+    val cloudUserManager = remember { CloudUserManager(context) }
+    val coroutineScope = rememberCoroutineScope()
+    var reminders by remember { mutableStateOf<List<Reminder>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
+    var showAddReminderDialog by remember { mutableStateOf(false) }
+    
+    // Load reminders from backend
+    LaunchedEffect(Unit) {
+        cloudUserManager.getRemindersV2().onSuccess { list ->
+            reminders = list
+            isLoading = false
+        }.onFailure {
+            isLoading = false
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -57,6 +76,18 @@ fun RemindersScreen(
                     containerColor = Color.White
                 )
             )
+        },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = { showAddReminderDialog = true },
+                containerColor = Color(0xFF4A90E2),
+                contentColor = Color.White
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Add,
+                    contentDescription = "Add Reminder"
+                )
+            }
         }
     ) { innerPadding ->
         Column(
@@ -69,34 +100,112 @@ fun RemindersScreen(
         ) {
             Spacer(modifier = Modifier.height(24.dp))
 
-            val reminderItems = listOf(
-                ReminderItem(Icons.Rounded.Medication, Color(0xFFE3F2FD), Color(0xFF4A90E2), "Morning Medicine", "08:00 AM"),
-                ReminderItem(Icons.Rounded.WaterDrop, Color(0xFFFCE4EC), Color(0xFFE91E63), "Check Sugar Level", "09:00 AM"),
-                ReminderItem(Icons.Rounded.PhotoCamera, Color(0xFFF3E5F5), Color(0xFF9C27B0), "Wound Cleaning", "10:30 AM"),
-                ReminderItem(Icons.Rounded.Medication, Color(0xFFE3F2FD), Color(0xFF4A90E2), "Evening Medicine", "08:00 PM")
-            )
-
-            reminderItems.forEach { item ->
-                var isChecked by remember { 
-                    mutableStateOf(userManager.getReminderStatus(phone, item.title))
+            if (isLoading) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(color = Color(0xFF4A90E2))
                 }
-
-                ReminderCard(
-                    icon = item.icon,
-                    iconBgColor = item.bgColor,
-                    iconTint = item.tint,
-                    title = item.title,
-                    time = item.time,
-                    checked = isChecked,
-                    onCheckedChange = { newValue ->
-                        isChecked = newValue
-                        userManager.saveReminderStatus(item.title, newValue, item.time)
+            } else if (reminders.isEmpty()) {
+                // Empty state
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(32.dp).fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Medication,
+                            contentDescription = null,
+                            modifier = Modifier.size(64.dp),
+                            tint = Color.Gray
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = "No Reminders Set",
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = Color.Black
+                            ),
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Add a reminder to stay on track with your health routine",
+                            style = MaterialTheme.typography.bodyMedium.copy(color = Color.Gray),
+                            textAlign = TextAlign.Center
+                        )
                     }
-                )
-                Spacer(modifier = Modifier.height(16.dp))
+                }
+            } else {
+                reminders.forEach { reminder ->
+                    ReminderCardV2(
+                        icon = Icons.Rounded.Medication,
+                        iconBgColor = Color(0xFFE3F2FD),
+                        iconTint = Color(0xFF4A90E2),
+                        reminder = reminder,
+                        onStatusChange = { newStatus ->
+                            coroutineScope.launch {
+                                cloudUserManager.updateReminderStatusV2(reminder.reminderId, newStatus).onSuccess {
+                                    // Reload reminders
+                                    cloudUserManager.getRemindersV2().onSuccess { list ->
+                                        reminders = list
+                                    }
+                                }
+                            }
+                        }
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
+        }
+
+        // Add Reminder Dialog
+        if (showAddReminderDialog) {
+            AddReminderDialog(
+                onDismiss = { showAddReminderDialog = false },
+                onConfirm = { title, date, time ->
+                    coroutineScope.launch {
+                        cloudUserManager.setReminder(
+                            title = title,
+                            time = time,
+                            date = date,
+                            type = "medication"
+                        ).onSuccess { response ->
+                            // Schedule notification
+                            val notificationHelper = NotificationHelper(context)
+                            val reminderId = (response.data as? Map<*, *>)?.get("reminder_id")?.toString()?.toIntOrNull() ?: System.currentTimeMillis().toInt()
+                            notificationHelper.scheduleReminder(reminderId, title, date, time)
+                            
+                            // Reload reminders
+                            cloudUserManager.getRemindersV2().onSuccess { list ->
+                                reminders = list
+                            }
+                            showAddReminderDialog = false
+                            
+                            // Show success message
+                            android.widget.Toast.makeText(
+                                context,
+                                "Reminder added successfully!",
+                                android.widget.Toast.LENGTH_SHORT
+                            ).show()
+                        }.onFailure { error ->
+                            android.widget.Toast.makeText(
+                                context,
+                                "Failed to add reminder: ${error.message}",
+                                android.widget.Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    }
+                }
+            )
         }
     }
 }
@@ -177,6 +286,129 @@ fun ReminderCard(
                     unselectedColor = Color.Gray
                 )
             )
+        }
+    }
+}
+
+@Composable
+fun ReminderCardV2(
+    icon: ImageVector,
+    iconBgColor: Color,
+    iconTint: Color,
+    reminder: Reminder,
+    onStatusChange: (String) -> Unit
+) {
+    val status = reminder.status ?: "pending"
+    val statusColor = when (status) {
+        "completed" -> Color(0xFF4CAF50)
+        "missed" -> Color(0xFFF44336)
+        "cancelled" -> Color(0xFF9E9E9E)
+        else -> Color(0xFFFF9800) // pending = orange
+    }
+    val statusText = when (status) {
+        "completed" -> "Completed"
+        "missed" -> "Missed"
+        "cancelled" -> "Cancelled"
+        else -> "Pending"
+    }
+    
+    Card(
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(RoundedCornerShape(24.dp))
+                        .background(iconBgColor),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = iconTint,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(16.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = reminder.reminderTitle,
+                        style = MaterialTheme.typography.bodyLarge.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Black
+                        )
+                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "🕒",
+                            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "${reminder.reminderTime} • ${reminder.reminderDate}",
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                color = Color.Gray
+                            )
+                        )
+                    }
+                }
+                // Status Badge
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = statusColor.copy(alpha = 0.15f)),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(
+                        text = statusText,
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            color = statusColor,
+                            fontWeight = FontWeight.Bold
+                        ),
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                    )
+                }
+            }
+            
+            // Action Buttons (only show for pending reminders)
+            if (status == "pending") {
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = { onStatusChange("completed") },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = Color(0xFF4CAF50)
+                        ),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text("✓ Complete", fontSize = 14.sp)
+                    }
+                    OutlinedButton(
+                        onClick = { onStatusChange("cancelled") },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = Color(0xFF9E9E9E)
+                        ),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text("✕ Cancel", fontSize = 14.sp)
+                    }
+                }
+            }
         }
     }
 }

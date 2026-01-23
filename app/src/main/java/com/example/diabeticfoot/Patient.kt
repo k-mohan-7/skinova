@@ -10,5 +10,6 @@ data class Patient(
     val symptoms: List<String>,
     val phone: String,
     val imageTime: String,
-    val imageUri: String? = null
+    val imageUri: String? = null,
+    val id: Int = 0
 )
