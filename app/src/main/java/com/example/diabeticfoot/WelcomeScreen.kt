@@ -44,7 +44,7 @@ fun WelcomeScreen(onGetStartedClick: () -> Unit = {}) {
 
         // Title
         Text(
-            text = "DFU Follow-Up",
+            text = "Smart DFU",
             style = MaterialTheme.typography.headlineMedium.copy(
                 fontWeight = FontWeight.Bold,
                 color = Color(0xFFFF9800), // Orange color

@@ -103,9 +103,18 @@ class CloudUserManager(private val context: Context) {
                 } else {
                     Result.failure(Exception(response.message() ?: "Login failed"))
                 }
+            } catch (e: com.google.gson.stream.MalformedJsonException) {
+                Log.e("CloudUserManager", "Server returned invalid response (database error)", e)
+                Result.failure(Exception("Server database error. Please contact administrator."))
+            } catch (e: java.net.ConnectException) {
+                Log.e("CloudUserManager", "Cannot connect to server", e)
+                Result.failure(Exception("Cannot connect to server. Check your network connection."))
+            } catch (e: java.net.SocketTimeoutException) {
+                Log.e("CloudUserManager", "Connection timeout", e)
+                Result.failure(Exception("Connection timeout. Please try again."))
             } catch (e: Exception) {
                 Log.e("CloudUserManager", "Error during login", e)
-                Result.failure(e)
+                Result.failure(Exception("Login failed: ${e.message ?: "Unknown error"}"))
             }
         }
     
