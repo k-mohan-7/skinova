@@ -200,19 +200,33 @@ fun PatientHomeScreenContent(
     LaunchedEffect(Unit) {
         val userId = cloudUserManager.getLoggedInUserId()
         if (userId > 0) {
+            // Sync profile from backend to get latest name
+            cloudUserManager.syncPatientProfile().onSuccess { profileResponse ->
+                if (profileResponse.success && profileResponse.userData != null) {
+                    name = profileResponse.userData.fullName
+                    Log.d("PatientHomeScreen", "Profile synced: $name")
+                }
+            }.onFailure {
+                Log.e("PatientHomeScreen", "Failed to sync profile", it)
+            }
+            
+            // Load sugar levels
             cloudUserManager.getSugarLevels().onSuccess { levels ->
                 if (levels.isNotEmpty()) {
-                    sugar = levels.first().sugarLevel.toInt()
+                    val latestSugar = levels.first()
+                    sugar = latestSugar.sugarLevel.toInt()
                     risk = when {
                         sugar < 70 -> "Low Risk"
                         sugar in 70..140 -> "Normal"
                         sugar in 141..200 -> "High Risk"
                         else -> "Critical"
                     }
+                    Log.d("PatientHomeScreen", "Loaded sugar: $sugar from backend")
                 }
                 isLoading = false
             }.onFailure {
                 isLoading = false
+                Log.e("PatientHomeScreen", "Failed to load sugar levels", it)
             }
             
             // Load doctor advice

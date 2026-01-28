@@ -186,6 +186,145 @@ class CloudUserManager(private val context: Context) {
         return prefs.getString("HOSPITAL_NAME", null)
     }
     
+    // ==================== Profile Update Operations ====================
+    
+    suspend fun updatePatientProfile(
+        fullName: String,
+        age: Int,
+        gender: String,
+        phone: String,
+        password: String? = null
+    ): Result<UpdateProfileResponse> = withContext(Dispatchers.IO) {
+        try {
+            val patientId = getLoggedInUserId()
+            val request = UpdatePatientProfileRequest(
+                patientId = patientId,
+                fullName = fullName,
+                age = age,
+                gender = gender,
+                phone = phone,
+                password = if (password.isNullOrEmpty()) null else password
+            )
+            val response = apiService.updatePatientProfile(request)
+            if (response.isSuccessful && response.body() != null) {
+                val result = response.body()!!
+                // Update local storage with new data
+                if (result.success && result.userData != null) {
+                    prefs.edit().apply {
+                        putString("FULL_NAME", result.userData.fullName)
+                        putString("USER_PHONE", result.userData.phone)
+                        putString("USER_EMAIL", result.userData.email ?: "")
+                        apply()
+                    }
+                }
+                Result.success(result)
+            } else {
+                Result.failure(Exception(response.message() ?: "Failed to update profile"))
+            }
+        } catch (e: Exception) {
+            Log.e("CloudUserManager", "Error updating patient profile", e)
+            Result.failure(e)
+        }
+    }
+    
+    suspend fun updateDoctorProfile(
+        fullName: String,
+        email: String,
+        phone: String,
+        specialization: String,
+        hospitalName: String,
+        password: String? = null
+    ): Result<UpdateProfileResponse> = withContext(Dispatchers.IO) {
+        try {
+            val doctorId = getLoggedInUserId()
+            val request = UpdateDoctorProfileRequest(
+                doctorId = doctorId,
+                fullName = fullName,
+                email = email,
+                phone = phone,
+                specialization = specialization,
+                hospitalName = hospitalName,
+                password = if (password.isNullOrEmpty()) null else password
+            )
+            val response = apiService.updateDoctorProfile(request)
+            if (response.isSuccessful && response.body() != null) {
+                val result = response.body()!!
+                // Update local storage with new data
+                if (result.success && result.userData != null) {
+                    prefs.edit().apply {
+                        putString("FULL_NAME", result.userData.fullName)
+                        putString("USER_PHONE", result.userData.phone)
+                        putString("USER_EMAIL", result.userData.email ?: "")
+                        putString("SPECIALIZATION", result.userData.specialization ?: "")
+                        putString("HOSPITAL_NAME", result.userData.hospitalName ?: "")
+                        apply()
+                    }
+                }
+                Result.success(result)
+            } else {
+                Result.failure(Exception(response.message() ?: "Failed to update profile"))
+            }
+        } catch (e: Exception) {
+            Log.e("CloudUserManager", "Error updating doctor profile", e)
+            Result.failure(e)
+        }
+    }
+    
+    // ==================== Profile Sync Operations ====================
+    
+    suspend fun syncPatientProfile(): Result<UpdateProfileResponse> = withContext(Dispatchers.IO) {
+        try {
+            val patientId = getLoggedInUserId()
+            val response = apiService.getPatientProfile(patientId)
+            if (response.isSuccessful && response.body() != null) {
+                val result = response.body()!!
+                // Update local storage with fresh data from backend
+                if (result.success && result.userData != null) {
+                    prefs.edit().apply {
+                        putString("FULL_NAME", result.userData.fullName)
+                        putString("USER_PHONE", result.userData.phone)
+                        apply()
+                    }
+                    Log.d("CloudUserManager", "Patient profile synced: ${result.userData.fullName}")
+                }
+                Result.success(result)
+            } else {
+                Result.failure(Exception(response.message() ?: "Failed to fetch profile"))
+            }
+        } catch (e: Exception) {
+            Log.e("CloudUserManager", "Error syncing patient profile", e)
+            Result.failure(e)
+        }
+    }
+    
+    suspend fun syncDoctorProfile(): Result<UpdateProfileResponse> = withContext(Dispatchers.IO) {
+        try {
+            val doctorId = getLoggedInUserId()
+            val response = apiService.getDoctorProfile(doctorId)
+            if (response.isSuccessful && response.body() != null) {
+                val result = response.body()!!
+                // Update local storage with fresh data from backend
+                if (result.success && result.userData != null) {
+                    prefs.edit().apply {
+                        putString("FULL_NAME", result.userData.fullName)
+                        putString("USER_PHONE", result.userData.phone)
+                        putString("USER_EMAIL", result.userData.email ?: "")
+                        putString("SPECIALIZATION", result.userData.specialization ?: "")
+                        putString("HOSPITAL_NAME", result.userData.hospitalName ?: "")
+                        apply()
+                    }
+                    Log.d("CloudUserManager", "Doctor profile synced: ${result.userData.fullName}")
+                }
+                Result.success(result)
+            } else {
+                Result.failure(Exception(response.message() ?: "Failed to fetch profile"))
+            }
+        } catch (e: Exception) {
+            Log.e("CloudUserManager", "Error syncing doctor profile", e)
+            Result.failure(e)
+        }
+    }
+    
     // ==================== Patient Operations ====================
     
     suspend fun logSugarLevel(sugarLevel: Float, measurementTime: String): Result<ApiResponse> = 
@@ -307,11 +446,21 @@ class CloudUserManager(private val context: Context) {
         title: String,
         time: String,
         date: String,
-        type: String
+        type: String,
+        isRecurring: Boolean = false,
+        recurrencePattern: String = ""
     ): Result<ApiResponse> = withContext(Dispatchers.IO) {
         try {
             val patientId = getLoggedInUserId()
-            val request = ReminderRequest(patientId, title, time, date, type)
+            val request = ReminderRequest(
+                patientId = patientId,
+                reminderTitle = title,
+                reminderTime = time,
+                reminderDate = date,
+                reminderType = type,
+                isRecurring = if (isRecurring) 1 else 0,
+                recurrencePattern = recurrencePattern
+            )
             val response = apiService.setReminder(request)
             if (response.isSuccessful && response.body() != null) {
                 Result.success(response.body()!!)

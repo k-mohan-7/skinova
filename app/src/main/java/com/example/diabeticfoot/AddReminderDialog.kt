@@ -26,11 +26,13 @@ import java.util.*
 @Composable
 fun AddReminderDialog(
     onDismiss: () -> Unit,
-    onConfirm: (title: String, date: String, time: String) -> Unit
+    onConfirm: (title: String, date: String, time: String, isRecurring: Boolean, recurrencePattern: String) -> Unit
 ) {
     var reminderTitle by remember { mutableStateOf("") }
     var selectedDate by remember { mutableStateOf("") }
     var selectedTime by remember { mutableStateOf("") }
+    var isRecurring by remember { mutableStateOf(false) }
+    var recurrencePattern by remember { mutableStateOf("daily") }
     var showError by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
@@ -207,6 +209,70 @@ fun AddReminderDialog(
                     )
                 }
 
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Recurring Toggle
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "Recurring Reminder",
+                        style = MaterialTheme.typography.bodyLarge.copy(
+                            fontWeight = FontWeight.Medium
+                        )
+                    )
+                    Switch(
+                        checked = isRecurring,
+                        onCheckedChange = { isRecurring = it },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = Color.White,
+                            checkedTrackColor = Color(0xFF4A90E2),
+                            uncheckedThumbColor = Color.White,
+                            uncheckedTrackColor = Color.LightGray
+                        )
+                    )
+                }
+
+                // Recurrence Pattern Selection (only show if recurring is enabled)
+                if (isRecurring) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    Text(
+                        text = "Repeat",
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontWeight = FontWeight.Medium,
+                            color = Color.Gray
+                        ),
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        listOf("daily", "weekly", "monthly").forEach { pattern ->
+                            val isSelected = recurrencePattern == pattern
+                            Button(
+                                onClick = { recurrencePattern = pattern },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (isSelected) Color(0xFF4A90E2) else Color.White,
+                                    contentColor = if (isSelected) Color.White else Color(0xFF4A90E2)
+                                ),
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.weight(1f),
+                                border = if (!isSelected) androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF4A90E2)) else null
+                            ) {
+                                Text(
+                                    text = pattern.capitalize(Locale.ROOT),
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                        }
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(24.dp))
 
                 // Action Buttons
@@ -230,7 +296,7 @@ fun AddReminderDialog(
                     Button(
                         onClick = {
                             if (reminderTitle.isNotEmpty() && selectedDate.isNotEmpty() && selectedTime.isNotEmpty()) {
-                                onConfirm(reminderTitle, selectedDate, selectedTime)
+                                onConfirm(reminderTitle, selectedDate, selectedTime, isRecurring, recurrencePattern)
                             } else {
                                 showError = true
                             }

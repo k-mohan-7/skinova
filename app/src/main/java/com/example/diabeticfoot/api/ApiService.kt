@@ -105,4 +105,18 @@ interface ApiService {
     
     @GET("patient/get_reminders_v2.php")
     suspend fun getRemindersV2(@Query("patient_id") patientId: Int): Response<RemindersResponse>
+    
+    // ==================== Profile Update APIs ====================
+    
+    @POST("patient/update_profile.php")
+    suspend fun updatePatientProfile(@Body request: UpdatePatientProfileRequest): Response<UpdateProfileResponse>
+    
+    @POST("doctor/update_profile.php")
+    suspend fun updateDoctorProfile(@Body request: UpdateDoctorProfileRequest): Response<UpdateProfileResponse>
+    
+    @GET("patient/get_profile.php")
+    suspend fun getPatientProfile(@Query("patient_id") patientId: Int): Response<UpdateProfileResponse>
+    
+    @GET("doctor/get_profile.php")
+    suspend fun getDoctorProfile(@Query("doctor_id") doctorId: Int): Response<UpdateProfileResponse>
 }

@@ -12,7 +12,7 @@ import java.nio.channels.FileChannel
 class DFUSeverityClassifier(private val context: Context) {
     
     private var interpreter: Interpreter? = null
-    private val modelFileName = "dfu_model_final_quantized.tflite"  // TF 2.19 compatible model
+    private val modelFileName = "dfu_model_final_with_high_accu_hand_leg.tflite"  // High accuracy hand/leg model
     
     // Model specifications
     private val inputSize = 224

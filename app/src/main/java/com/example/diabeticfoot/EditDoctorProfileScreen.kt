@@ -17,6 +17,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.diabeticfoot.ui.theme.DIABETICFootTheme
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -25,14 +26,20 @@ fun EditDoctorProfileScreen(
     onSaveClick: () -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    val userManager = remember { UserManager(context) }
-    val currentEmail = remember { userManager.getCurrentDoctorEmail() ?: "" }
+    val cloudUserManager = remember { CloudUserManager(context) }
+    val coroutineScope = rememberCoroutineScope()
     
-    var name by remember { mutableStateOf(userManager.getDoctorName(currentEmail)) }
-    var specialization by remember { mutableStateOf(userManager.getDoctorSpec(currentEmail)) }
-    var hospital by remember { mutableStateOf(userManager.getDoctorHospital(currentEmail)) }
-    var phone by remember { mutableStateOf(userManager.getDoctorPhone(currentEmail)) }
-    var email by remember { mutableStateOf(currentEmail) }
+    // Load current user data
+    var name by remember { mutableStateOf(cloudUserManager.getUserFullName() ?: "") }
+    var specialization by remember { mutableStateOf(cloudUserManager.getUserSpecialization() ?: "") }
+    var hospital by remember { mutableStateOf(cloudUserManager.getUserHospital() ?: "") }
+    var phone by remember { mutableStateOf(cloudUserManager.getUserPhone() ?: "") }
+    var email by remember { mutableStateOf(cloudUserManager.getUserEmail() ?: "") }
+    var password by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
+    var isLoading by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var successMessage by remember { mutableStateOf<String?>(null) }
 
     Scaffold(
         topBar = {
@@ -82,20 +89,90 @@ fun EditDoctorProfileScreen(
             Spacer(modifier = Modifier.height(24.dp))
             
             EditProfileField(label = "Email", value = email, onValueChange = { email = it })
+            Spacer(modifier = Modifier.height(24.dp))
+            
+            EditProfileField(label = "Change Password (optional)", value = password, onValueChange = { password = it }, isPassword = true)
+            Spacer(modifier = Modifier.height(24.dp))
+            
+            EditProfileField(label = "Confirm Password", value = confirmPassword, onValueChange = { confirmPassword = it }, isPassword = true)
             
             Spacer(modifier = Modifier.weight(1f))
             Spacer(modifier = Modifier.height(32.dp))
 
-            val context = androidx.compose.ui.platform.LocalContext.current
+            // Show error message
+            if (errorMessage != null) {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF44336)),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = errorMessage!!,
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            color = Color.White,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        ),
+                        modifier = Modifier.padding(16.dp).fillMaxWidth()
+                    )
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
+            // Show success message
+            if (successMessage != null) {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF4CAF50)),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = successMessage!!,
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            color = Color.White,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        ),
+                        modifier = Modifier.padding(16.dp).fillMaxWidth()
+                    )
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
             Button(
                 onClick = {
                     if (name.isBlank() || specialization.isBlank() || hospital.isBlank() || phone.isBlank() || email.isBlank()) {
-                        android.widget.Toast.makeText(context, "Please fill all fields", android.widget.Toast.LENGTH_SHORT).show()
+                        errorMessage = "Please fill all required fields"
+                    } else if (password.isNotEmpty() && password != confirmPassword) {
+                        errorMessage = "Passwords do not match"
                     } else {
-                        userManager.updateDoctorProfile(currentEmail, name, specialization, hospital, phone)
-                        onSaveClick()
+                        isLoading = true
+                        errorMessage = null
+                        successMessage = null
+                        
+                        coroutineScope.launch {
+                            cloudUserManager.updateDoctorProfile(
+                                fullName = name,
+                                email = email,
+                                phone = phone,
+                                specialization = specialization,
+                                hospitalName = hospital,
+                                password = if (password.isEmpty()) null else password
+                            ).onSuccess { response ->
+                                isLoading = false
+                                if (response.success) {
+                                    successMessage = "Profile updated successfully!"
+                                    kotlinx.coroutines.delay(1500)
+                                    onSaveClick()
+                                } else {
+                                    errorMessage = response.message
+                                }
+                            }.onFailure { e ->
+                                isLoading = false
+                                errorMessage = "Error: ${e.message}"
+                            }
+                        }
                     }
                 },
+                enabled = !isLoading,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
@@ -104,13 +181,20 @@ fun EditDoctorProfileScreen(
                     containerColor = Color(0xFF2962FF) // Vibrant blue for Save button
                 )
             ) {
-                Text(
-                    text = "Save Changes",
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        color = Color.White,
+                        modifier = Modifier.size(20.dp)
                     )
-                )
+                } else {
+                    Text(
+                        text = "Save Changes",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    )
+                }
             }
         }
     }
@@ -120,7 +204,8 @@ fun EditDoctorProfileScreen(
 fun EditProfileField(
     label: String,
     value: String,
-    onValueChange: (String) -> Unit
+    onValueChange: (String) -> Unit,
+    isPassword: Boolean = false
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
@@ -147,7 +232,8 @@ fun EditProfileField(
                 focusedTextColor = Color.Black,
                 unfocusedTextColor = Color.Black
             ),
-            singleLine = true
+            singleLine = true,
+            visualTransformation = if (isPassword) androidx.compose.ui.text.input.PasswordVisualTransformation() else androidx.compose.ui.text.input.VisualTransformation.None
         )
     }
 }

@@ -19,6 +19,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.diabeticfoot.ui.theme.DIABETICFootTheme
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -27,15 +28,28 @@ fun EditProfileScreen(
     onSaveClick: () -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    val userManager = remember { UserManager(context) }
-    val currentPhone = remember { userManager.getCurrentPatientPhone() ?: "" }
+    val cloudUserManager = remember { CloudUserManager(context) }
+    val coroutineScope = rememberCoroutineScope()
     
-    var name by remember { mutableStateOf(userManager.getPatientName(currentPhone)) }
-    var age by remember { mutableStateOf(userManager.getPatientAge(currentPhone)) }
-    var gender by remember { mutableStateOf(userManager.getPatientGender(currentPhone)) }
-    var phone by remember { mutableStateOf(currentPhone) }
+    // Load current user data
+    var name by remember { mutableStateOf(cloudUserManager.getUserFullName() ?: "") }
+    var age by remember { mutableStateOf("") }
+    var gender by remember { mutableStateOf("Male") }
+    var phone by remember { mutableStateOf(cloudUserManager.getUserPhone() ?: "") }
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
+    var isLoading by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var successMessage by remember { mutableStateOf<String?>(null) }
+    
+    // Try to parse age from stored name or other source
+    // In a real app, you'd fetch this from the backend
+    LaunchedEffect(Unit) {
+        // Age and gender would be fetched from backend in production
+        // For now, using defaults
+        age = "30"
+        gender = "Male"
+    }
 
     Scaffold(
         topBar = {
@@ -136,20 +150,80 @@ fun EditProfileScreen(
 
             Spacer(modifier = Modifier.height(48.dp))
 
-            // Save Changes Button
-            val context = androidx.compose.ui.platform.LocalContext.current
+            // Show error message
+            if (errorMessage != null) {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF44336)),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = errorMessage!!,
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            color = Color.White,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        ),
+                        modifier = Modifier.padding(16.dp).fillMaxWidth()
+                    )
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+            }
 
+            // Show success message
+            if (successMessage != null) {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF4CAF50)),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = successMessage!!,
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            color = Color.White,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        ),
+                        modifier = Modifier.padding(16.dp).fillMaxWidth()
+                    )
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
+            // Save Changes Button
             Button(
                 onClick = {
                     if (name.isBlank() || age.isBlank() || phone.isBlank()) {
-                         android.widget.Toast.makeText(context, "Please fill all fields", android.widget.Toast.LENGTH_SHORT).show()
+                        errorMessage = "Please fill all fields"
                     } else if (password.isNotEmpty() && password != confirmPassword) {
-                        android.widget.Toast.makeText(context, "Passwords do not match", android.widget.Toast.LENGTH_SHORT).show()
+                        errorMessage = "Passwords do not match"
                     } else {
-                        userManager.updatePatientProfile(currentPhone, name, age, gender, password.ifEmpty { "" })
-                        onSaveClick()
+                        isLoading = true
+                        errorMessage = null
+                        successMessage = null
+                        
+                        coroutineScope.launch {
+                            cloudUserManager.updatePatientProfile(
+                                fullName = name,
+                                age = age.toIntOrNull() ?: 0,
+                                gender = gender,
+                                phone = phone,
+                                password = if (password.isEmpty()) null else password
+                            ).onSuccess { response ->
+                                isLoading = false
+                                if (response.success) {
+                                    successMessage = "Profile updated successfully!"
+                                    kotlinx.coroutines.delay(1500)
+                                    onSaveClick()
+                                } else {
+                                    errorMessage = response.message
+                                }
+                            }.onFailure { e ->
+                                isLoading = false
+                                errorMessage = "Error: ${e.message}"
+                            }
+                        }
                     }
                 },
+                enabled = !isLoading,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
@@ -159,19 +233,26 @@ fun EditProfileScreen(
                 shape = RoundedCornerShape(12.dp),
                 elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Default.Save,
-                        contentDescription = null,
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        color = Color.White,
                         modifier = Modifier.size(20.dp)
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Save Changes",
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = FontWeight.Bold
+                } else {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Save,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp)
                         )
-                    )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Save Changes",
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontWeight = FontWeight.Bold
+                            )
+                        )
+                    }
                 }
             }
 

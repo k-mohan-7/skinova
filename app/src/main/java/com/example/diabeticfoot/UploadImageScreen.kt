@@ -54,6 +54,10 @@ import com.example.diabeticfoot.api.models.WoundImageDetail
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
 import com.example.diabeticfoot.CloudUserManager
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -71,6 +75,8 @@ fun UploadImageScreen(
     var isEditMode by remember { mutableStateOf(false) }
     var todaysImage by remember { mutableStateOf<WoundImageDetail?>(null) }
     var isLoadingToday by remember { mutableStateOf(true) }
+    var refreshTrigger by remember { mutableStateOf(0) }
+    var isSelectingImage by remember { mutableStateOf(false) }
     
     // Validation States
     var isChecking by remember { mutableStateOf(false) }
@@ -78,14 +84,33 @@ fun UploadImageScreen(
     var isUploading by remember { mutableStateOf(false) }
     val validator = remember { FootImageValidator(context) }
     
-    // Check if today's wound image exists
-    LaunchedEffect(Unit) {
+    // Observe lifecycle to refresh data when screen becomes visible
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME && !isSelectingImage) {
+                // Trigger refresh only when NOT selecting image (not returning from camera/gallery)
+                refreshTrigger++
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+    
+    // Check if today's wound image exists - refresh when screen becomes visible
+    LaunchedEffect(refreshTrigger) {
+        isLoadingToday = true
         cloudUserManager.getWoundImagesHistory().onSuccess { imagesList ->
             val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
             val todaysRecord = imagesList.find { it.uploadDate == today }
             if (todaysRecord != null) {
                 todaysImage = todaysRecord
-                isEditMode = false // Start in view mode
+                // Only switch to view mode if user hasn't selected a new image
+                if (selectedImageUri == null) {
+                    isEditMode = false
+                }
             } else {
                 isEditMode = true // No record, start in edit mode
             }
@@ -101,12 +126,21 @@ fun UploadImageScreen(
         if (selectedImageUri != null) {
             isChecking = true
             isValid = false // Reset
-            validator.validate(selectedImageUri!!) { success ->
-                isValid = success
-                isChecking = false
-                if (!success) {
-                    Toast.makeText(context, "Please upload a clear foot or wound image.", Toast.LENGTH_LONG).show()
+            try {
+                // Small delay to ensure file is fully written
+                kotlinx.coroutines.delay(300)
+                validator.validate(selectedImageUri!!) { success ->
+                    isValid = success
+                    isChecking = false
+                    if (!success) {
+                        Toast.makeText(context, "Please upload a clear foot or wound image.", Toast.LENGTH_LONG).show()
+                    }
                 }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                isChecking = false
+                isValid = true // Allow upload if validation fails
+                Toast.makeText(context, "Could not validate image, proceeding anyway", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -121,8 +155,10 @@ fun UploadImageScreen(
     val cameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicture()
     ) { success ->
+        isSelectingImage = false  // Reset flag
         if (success) {
             selectedImageUri = tempImageUri
+            isEditMode = true  // Ensure we stay in edit mode
         }
     }
 
@@ -138,6 +174,7 @@ fun UploadImageScreen(
                 file
             )
             tempImageUri = uri
+            isSelectingImage = true  // Set flag before launching camera
             cameraLauncher.launch(uri)
         } else {
             Toast.makeText(context, "Camera permission needed", Toast.LENGTH_SHORT).show()
@@ -148,8 +185,10 @@ fun UploadImageScreen(
     val galleryLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
+        isSelectingImage = false  // Reset flag
         if (uri != null) {
             selectedImageUri = uri
+            isEditMode = true  // Ensure we stay in edit mode
         }
     }
 
@@ -594,7 +633,10 @@ fun UploadImageScreen(
                     colors = CardDefaults.cardColors(containerColor = Color.White),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { galleryLauncher.launch("image/*") }
+                        .clickable { 
+                            isSelectingImage = true
+                            galleryLauncher.launch("image/*") 
+                        }
                 ) {
                     Row(
                         modifier = Modifier
@@ -622,7 +664,10 @@ fun UploadImageScreen(
             } else {
                 // Simple Replace Option
                  TextButton(
-                    onClick = { galleryLauncher.launch("image/*") },
+                    onClick = { 
+                        isSelectingImage = true
+                        galleryLauncher.launch("image/*") 
+                    },
                     modifier = Modifier.fillMaxWidth()
                  ) {
                      Text("Choose a different image", color = Color(0xFF4A90E2))

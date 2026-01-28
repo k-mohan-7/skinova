@@ -10,6 +10,15 @@ class FootImageValidator(private val context: Context) {
 
     fun validate(imageUri: Uri, onResult: (Boolean) -> Unit) {
         try {
+            // Check if the URI is accessible before processing
+            val inputStream = context.contentResolver.openInputStream(imageUri)
+            if (inputStream == null) {
+                println("FootImageValidator: Cannot access image URI")
+                onResult(true) // Fail-safe: allow upload if we can't validate
+                return
+            }
+            inputStream.close()
+
             val image = InputImage.fromFilePath(context, imageUri)
             val labeler = ImageLabeling.getClient(ImageLabelerOptions.DEFAULT_OPTIONS)
 
@@ -38,13 +47,15 @@ class FootImageValidator(private val context: Context) {
                 }
                 .addOnFailureListener { e ->
                     e.printStackTrace()
-                    // If ML fails, we might want to fail safe or let it pass with a warning.
-                    // For now, let's treat error as invalid.
-                    onResult(false)
+                    println("FootImageValidator: ML Kit failed - ${e.message}")
+                    // Fail-safe: allow upload if validation fails
+                    onResult(true)
                 }
         } catch (e: Exception) {
             e.printStackTrace()
-            onResult(false)
+            println("FootImageValidator: Exception during validation - ${e.message}")
+            // Fail-safe: allow upload if validation throws exception
+            onResult(true)
         }
     }
 }

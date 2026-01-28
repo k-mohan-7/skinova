@@ -41,7 +41,14 @@ class NotificationHelper(private val context: Context) {
         }
     }
 
-    fun scheduleReminder(reminderId: Int, title: String, date: String, time: String) {
+    fun scheduleReminder(
+        reminderId: Int, 
+        title: String, 
+        date: String, 
+        time: String, 
+        isRecurring: Boolean = false, 
+        recurrencePattern: String = "daily"
+    ) {
         try {
             // Parse date and time with high precision
             val dateTimeString = "$date $time"
@@ -60,6 +67,8 @@ class NotificationHelper(private val context: Context) {
                     val intent = Intent(context, ReminderBroadcastReceiver::class.java).apply {
                         putExtra("reminder_id", reminderId)
                         putExtra("reminder_title", title)
+                        putExtra("is_recurring", isRecurring)
+                        putExtra("recurrence_pattern", recurrencePattern)
                     }
 
                     val pendingIntent = PendingIntent.getBroadcast(
@@ -69,19 +78,37 @@ class NotificationHelper(private val context: Context) {
                         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                     )
 
-                    // Use setExactAndAllowWhileIdle for precise timing
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                        alarmManager.setExactAndAllowWhileIdle(
+                    if (isRecurring) {
+                        // Calculate interval based on pattern
+                        val interval = when (recurrencePattern) {
+                            "daily" -> AlarmManager.INTERVAL_DAY
+                            "weekly" -> AlarmManager.INTERVAL_DAY * 7
+                            "monthly" -> AlarmManager.INTERVAL_DAY * 30
+                            else -> AlarmManager.INTERVAL_DAY
+                        }
+
+                        // Use setRepeating for recurring reminders
+                        alarmManager.setRepeating(
                             AlarmManager.RTC_WAKEUP,
                             reminderTime,
+                            interval,
                             pendingIntent
                         )
                     } else {
-                        alarmManager.setExact(
-                            AlarmManager.RTC_WAKEUP,
-                            reminderTime,
-                            pendingIntent
-                        )
+                        // Use setExactAndAllowWhileIdle for precise one-time timing
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                            alarmManager.setExactAndAllowWhileIdle(
+                                AlarmManager.RTC_WAKEUP,
+                                reminderTime,
+                                pendingIntent
+                            )
+                        } else {
+                            alarmManager.setExact(
+                                AlarmManager.RTC_WAKEUP,
+                                reminderTime,
+                                pendingIntent
+                            )
+                        }
                     }
                 }
             }

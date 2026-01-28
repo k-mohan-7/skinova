@@ -194,7 +194,9 @@ data class ReminderRequest(
     @SerializedName("reminder_title") val reminderTitle: String,
     @SerializedName("reminder_time") val reminderTime: String,
     @SerializedName("reminder_date") val reminderDate: String,
-    @SerializedName("reminder_type") val reminderType: String = "medication"
+    @SerializedName("reminder_type") val reminderType: String = "medication",
+    @SerializedName("is_recurring") val isRecurring: Int = 0,
+    @SerializedName("recurrence_pattern") val recurrencePattern: String = ""
 )
 
 data class RemindersResponse(
@@ -345,3 +347,28 @@ data class UpdateReminderStatusRequest(
     @SerializedName("is_active") val isActive: Int
 )
 
+// Update Profile Requests
+data class UpdatePatientProfileRequest(
+    @SerializedName("patient_id") val patientId: Int,
+    @SerializedName("full_name") val fullName: String,
+    @SerializedName("age") val age: Int,
+    @SerializedName("gender") val gender: String,
+    @SerializedName("phone") val phone: String,
+    @SerializedName("password") val password: String? = null
+)
+
+data class UpdateDoctorProfileRequest(
+    @SerializedName("doctor_id") val doctorId: Int,
+    @SerializedName("full_name") val fullName: String,
+    @SerializedName("email") val email: String,
+    @SerializedName("phone") val phone: String,
+    @SerializedName("specialization") val specialization: String,
+    @SerializedName("hospital_name") val hospitalName: String,
+    @SerializedName("password") val password: String? = null
+)
+
+data class UpdateProfileResponse(
+    @SerializedName("success") val success: Boolean,
+    @SerializedName("message") val message: String,
+    @SerializedName("user_data") val userData: UserData? = null
+)

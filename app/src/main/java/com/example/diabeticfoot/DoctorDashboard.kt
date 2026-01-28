@@ -219,7 +219,7 @@ fun DoctorHomeScreenContent(
     val context = androidx.compose.ui.platform.LocalContext.current
     val cloudUserManager = remember { CloudUserManager(context) }
     val coroutineScope = rememberCoroutineScope()
-    val doctorName = remember { cloudUserManager.getUserFullName() ?: "Doctor" }
+    var doctorName by remember { mutableStateOf(cloudUserManager.getUserFullName() ?: "Doctor") }
     var searchQuery by remember { mutableStateOf("") }
     var patients by remember { mutableStateOf<List<Patient>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
@@ -230,6 +230,16 @@ fun DoctorHomeScreenContent(
     
     // Load patients from backend
     LaunchedEffect(Unit) {
+        // Sync profile first
+        cloudUserManager.syncDoctorProfile().onSuccess { profileResponse ->
+            if (profileResponse.success && profileResponse.userData != null) {
+                doctorName = profileResponse.userData.fullName
+                Log.d("DoctorHomeScreen", "Profile synced: $doctorName")
+            }
+        }.onFailure {
+            Log.e("DoctorHomeScreen", "Failed to sync profile", it)
+        }
+        
         Log.d("DoctorHomeScreen", "Loading patients...")
         cloudUserManager.getAllPatients().onSuccess { patientList ->
             Log.d("DoctorHomeScreen", "Loaded ${patientList.size} patients")

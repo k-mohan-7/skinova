@@ -171,18 +171,27 @@ fun RemindersScreen(
         if (showAddReminderDialog) {
             AddReminderDialog(
                 onDismiss = { showAddReminderDialog = false },
-                onConfirm = { title, date, time ->
+                onConfirm = { title, date, time, isRecurring, recurrencePattern ->
                     coroutineScope.launch {
                         cloudUserManager.setReminder(
                             title = title,
                             time = time,
                             date = date,
-                            type = "medication"
+                            type = "medication",
+                            isRecurring = isRecurring,
+                            recurrencePattern = recurrencePattern
                         ).onSuccess { response ->
                             // Schedule notification
                             val notificationHelper = NotificationHelper(context)
                             val reminderId = (response.data as? Map<*, *>)?.get("reminder_id")?.toString()?.toIntOrNull() ?: System.currentTimeMillis().toInt()
-                            notificationHelper.scheduleReminder(reminderId, title, date, time)
+                            notificationHelper.scheduleReminder(
+                                reminderId = reminderId, 
+                                title = title, 
+                                date = date, 
+                                time = time,
+                                isRecurring = isRecurring,
+                                recurrencePattern = recurrencePattern
+                            )
                             
                             // Reload reminders
                             cloudUserManager.getRemindersV2().onSuccess { list ->
