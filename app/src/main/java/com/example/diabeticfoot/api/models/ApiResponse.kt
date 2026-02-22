@@ -56,23 +56,23 @@ data class LoginRequest(
     @SerializedName("user_type") val userType: String
 )
 
-// Sugar Level
+// Skin Score / Condition Log
 data class SugarLevelRequest(
     @SerializedName("patient_id") val patientId: Int,
-    @SerializedName("sugar_level") val sugarLevel: Float,
-    @SerializedName("measurement_time") val measurementTime: String
+    @SerializedName("skin_score") val skinScore: Float,
+    @SerializedName("log_time") val logTime: String
 )
 
 data class SugarLevelResponse(
     @SerializedName("success") val success: Boolean,
     @SerializedName("message") val message: String,
-    @SerializedName("sugar_levels") val sugarLevels: List<SugarLevel>? = null
+    @SerializedName("skin_scores") val skinScores: List<SugarLevel>? = null
 )
 
 data class SugarLevel(
-    @SerializedName("sugar_value") val sugarLevel: Float,
-    @SerializedName("measurement_date") val measurementDate: String,
-    @SerializedName("measurement_time") val measurementTime: String,
+    @SerializedName("skin_score") val skinScore: Float,
+    @SerializedName("log_date") val logDate: String,
+    @SerializedName("log_time") val logTime: String,
     @SerializedName("timestamp") val timestamp: String? = null,
     @SerializedName("notes") val notes: String? = null
 )
@@ -80,19 +80,21 @@ data class SugarLevel(
 // Symptoms
 data class SymptomsRequest(
     @SerializedName("patient_id") val patientId: Int,
-    @SerializedName("severe_pain") val severePain: Int = 0,
-    @SerializedName("moderate_pain") val moderatePain: Int = 0,
-    @SerializedName("mild_pain") val mildPain: Int = 0,
+    @SerializedName("itching") val itching: Int = 0,
+    @SerializedName("rash") val rash: Int = 0,
+    @SerializedName("pain_discomfort") val painDiscomfort: Int = 0,
     @SerializedName("swelling") val swelling: Int = 0,
-    @SerializedName("redness_color_change") val rednessColorChange: Int = 0,
+    @SerializedName("redness_inflammation") val rednessInflammation: Int = 0,
+    @SerializedName("blistering") val blistering: Int = 0,
+    @SerializedName("dry_flaky_skin") val dryFlakySkin: Int = 0,
     @SerializedName("additional_notes") val additionalNotes: String = ""
 )
 
-// Wound Image Upload
+// Skin Image Upload
 data class WoundImageResponse(
     @SerializedName("success") val success: Boolean,
     @SerializedName("message") val message: String,
-    @SerializedName("wound_id") val woundId: Int? = null,
+    @SerializedName("image_id") val imageId: Int? = null,
     @SerializedName("image_path") val imagePath: String? = null
 )
 
@@ -149,9 +151,9 @@ data class PatientDetailsResponse(
     @SerializedName("success") val success: Boolean,
     @SerializedName("message") val message: String,
     @SerializedName("patient_info") val patientInfo: PatientInfo? = null,
-    @SerializedName("sugar_levels") val sugarLevels: List<SugarLevel>? = null,
+    @SerializedName("skin_scores") val skinScores: List<SugarLevel>? = null,
     @SerializedName("symptoms") val symptoms: List<Symptom>? = null,
-    @SerializedName("wound_images") val woundImages: List<WoundImage>? = null
+    @SerializedName("skin_images") val skinImages: List<WoundImage>? = null
 )
 
 data class Symptom(
@@ -161,7 +163,7 @@ data class Symptom(
 )
 
 data class WoundImage(
-    @SerializedName("wound_id") val woundId: Int,
+    @SerializedName("image_id") val imageId: Int,
     @SerializedName("image_path") val imagePath: String,
     @SerializedName("risk_level") val riskLevel: String,
     @SerializedName("ai_confidence") val aiConfidence: Float,
@@ -182,7 +184,7 @@ data class EmergencyAlert(
     @SerializedName("patient_id") val patientId: Int,
     @SerializedName("patient_name") val patientName: String,
     @SerializedName("patient_phone") val patientPhone: String,
-    @SerializedName("wound_id") val woundId: Int,
+    @SerializedName("image_id") val imageId: Int,
     @SerializedName("risk_level") val riskLevel: String,
     @SerializedName("alert_time") val alertTime: String,
     @SerializedName("status") val status: String
@@ -235,11 +237,13 @@ data class SymptomsHistoryResponse(
 data class SymptomDetail(
     @SerializedName("symptom_id") val symptomId: Int,
     @SerializedName("patient_id") val patientId: Int,
-    @SerializedName("severe_pain") val severePain: Int,
-    @SerializedName("moderate_pain") val moderatePain: Int,
-    @SerializedName("mild_pain") val mildPain: Int,
-    @SerializedName("swelling") val swelling: Int,
-    @SerializedName("redness_color_change") val rednessColorChange: Int,
+    @SerializedName("itching") val itching: Int = 0,
+    @SerializedName("rash") val rash: Int = 0,
+    @SerializedName("pain_discomfort") val painDiscomfort: Int = 0,
+    @SerializedName("swelling") val swelling: Int = 0,
+    @SerializedName("redness_inflammation") val rednessInflammation: Int = 0,
+    @SerializedName("blistering") val blistering: Int = 0,
+    @SerializedName("dry_flaky_skin") val dryFlakySkin: Int = 0,
     @SerializedName("additional_notes") val additionalNotes: String?,
     @SerializedName("symptom_date") val symptomDate: String,
     @SerializedName("created_at") val createdAt: String
@@ -254,7 +258,7 @@ data class WoundImagesHistoryResponse(
 )
 
 data class WoundImageDetail(
-    @SerializedName("wound_id") val woundId: Int,
+    @SerializedName("image_id") val imageId: Int,
     @SerializedName("patient_id") val patientId: Int,
     @SerializedName("image_path") val imagePath: String,
     @SerializedName("risk_level") val riskLevel: String,

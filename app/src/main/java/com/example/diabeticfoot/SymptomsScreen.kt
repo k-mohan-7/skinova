@@ -38,7 +38,7 @@ fun SymptomsScreen(
     val cloudUserManager = remember { CloudUserManager(context) }
     val coroutineScope = rememberCoroutineScope()
     
-    val symptoms = listOf("Severe Pain", "Swelling", "Redness/Color Change", "Moderate Pain", "Mild Pain")
+    val symptoms = listOf("Itching", "Redness/Inflammation", "Blistering", "Dry/Flaky Skin", "Swelling", "Rash", "Pain/Discomfort")
     val selectedSymptoms = remember { mutableStateListOf<String>() }
     var customSymptom by remember { mutableStateOf("") }
     var isSubmitting by remember { mutableStateOf(false) }
@@ -56,11 +56,13 @@ fun SymptomsScreen(
             if (todaysRecord != null) {
                 todaysSymptoms = todaysRecord
                 // Populate selected symptoms from today's data
-                if (todaysRecord.severePain == 1) selectedSymptoms.add("Severe Pain")
+                if (todaysRecord.itching == 1) selectedSymptoms.add("Itching")
+                if (todaysRecord.rash == 1) selectedSymptoms.add("Rash")
+                if (todaysRecord.painDiscomfort == 1) selectedSymptoms.add("Pain/Discomfort")
                 if (todaysRecord.swelling == 1) selectedSymptoms.add("Swelling")
-                if (todaysRecord.rednessColorChange == 1) selectedSymptoms.add("Redness/Color Change")
-                if (todaysRecord.moderatePain == 1) selectedSymptoms.add("Moderate Pain")
-                if (todaysRecord.mildPain == 1) selectedSymptoms.add("Mild Pain")
+                if (todaysRecord.rednessInflammation == 1) selectedSymptoms.add("Redness/Inflammation")
+                if (todaysRecord.blistering == 1) selectedSymptoms.add("Blistering")
+                if (todaysRecord.dryFlakySkin == 1) selectedSymptoms.add("Dry/Flaky Skin")
                 customSymptom = todaysRecord.additionalNotes ?: ""
                 isEditMode = false // Start in view mode
             } else {

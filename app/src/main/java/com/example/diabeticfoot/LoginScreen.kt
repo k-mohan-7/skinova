@@ -73,8 +73,8 @@ fun LoginScreenContent(
 
         // Logo
         Image(
-            painter = painterResource(id = R.drawable.logo_new),
-            contentDescription = "Logo",
+            painter = painterResource(id = R.drawable.skinova_logo),
+            contentDescription = "Skinova Logo",
             modifier = Modifier.size(100.dp),
             contentScale = ContentScale.Fit
         )

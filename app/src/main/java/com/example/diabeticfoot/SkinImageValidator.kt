@@ -6,14 +6,14 @@ import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.label.ImageLabeling
 import com.google.mlkit.vision.label.defaults.ImageLabelerOptions
 
-class FootImageValidator(private val context: Context) {
+class SkinImageValidator(private val context: Context) {
 
     fun validate(imageUri: Uri, onResult: (Boolean) -> Unit) {
         try {
             // Check if the URI is accessible before processing
             val inputStream = context.contentResolver.openInputStream(imageUri)
             if (inputStream == null) {
-                println("FootImageValidator: Cannot access image URI")
+                println("SkinImageValidator: Cannot access image URI")
                 onResult(true) // Fail-safe: allow upload if we can't validate
                 return
             }
@@ -28,12 +28,13 @@ class FootImageValidator(private val context: Context) {
                     val labelsText = labels.joinToString { "${it.text} (${it.confidence})" }
                     println("Image Labels: $labelsText")
 
-                    // Keywords for foot/leg/wound image validation
-                    // Accept common labels from ML Kit for medical wound images
+                    // Keywords for skin/body image validation
+                    // Accept common labels from ML Kit for medical skin condition images
                     val validKeywords = listOf(
-                        "Foot", "Toe", "Ankle", "Leg", "Barefoot", "Sole", "Heel", 
-                        "Human leg", "Sock", "Shoe", "Footwear", "Limb", "Extremity",
-                        "Flesh", "Skin", "Human body", "Body part", "Joint"
+                        "Skin", "Hand", "Arm", "Leg", "Face", "Body", "Shoulder",
+                        "Neck", "Chest", "Back", "Abdomen", "Thigh", "Calf",
+                        "Flesh", "Human body", "Body part", "Limb", "Extremity",
+                        "Joint", "Finger", "Wrist", "Elbow", "Knee", "Ankle"
                     )
 
                     // Accept if any keyword matches with reasonable confidence (>50%)
@@ -47,13 +48,13 @@ class FootImageValidator(private val context: Context) {
                 }
                 .addOnFailureListener { e ->
                     e.printStackTrace()
-                    println("FootImageValidator: ML Kit failed - ${e.message}")
+                    println("SkinImageValidator: ML Kit failed - ${e.message}")
                     // Fail-safe: allow upload if validation fails
                     onResult(true)
                 }
         } catch (e: Exception) {
             e.printStackTrace()
-            println("FootImageValidator: Exception during validation - ${e.message}")
+            println("SkinImageValidator: Exception during validation - ${e.message}")
             // Fail-safe: allow upload if validation throws exception
             onResult(true)
         }

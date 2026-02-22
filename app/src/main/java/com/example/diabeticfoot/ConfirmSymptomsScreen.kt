@@ -206,18 +206,20 @@ fun ConfirmSymptomsScreen(
                     errorMessage = null
                     coroutineScope.launch {
                         cloudUserManager.updateSymptoms(
-                            severePain = selectedSymptoms.contains("Severe Pain"),
-                            moderatePain = selectedSymptoms.contains("Moderate Pain"),
-                            mildPain = selectedSymptoms.contains("Mild Pain"),
+                            itching = selectedSymptoms.contains("Itching"),
+                            rash = selectedSymptoms.contains("Rash"),
+                            painDiscomfort = selectedSymptoms.contains("Pain/Discomfort"),
                             swelling = selectedSymptoms.contains("Swelling"),
-                            rednessColorChange = selectedSymptoms.contains("Redness/Color Change"),
+                            rednessInflammation = selectedSymptoms.contains("Redness/Inflammation"),
+                            blistering = selectedSymptoms.contains("Blistering"),
+                            dryFlakySkin = selectedSymptoms.contains("Dry/Flaky Skin"),
                             additionalNotes = additionalNotes
                         ).onSuccess {
                             // Create alert for doctor
                             val symptomsList = selectedSymptoms.joinToString(", ")
                             val priority = when {
-                                selectedSymptoms.contains("Severe Pain") -> "high"
-                                selectedSymptoms.contains("Moderate Pain") || selectedSymptoms.contains("Swelling") -> "medium"
+                                selectedSymptoms.contains("Blistering") || selectedSymptoms.contains("Rash") -> "high"
+                                selectedSymptoms.contains("Swelling") || selectedSymptoms.contains("Redness/Inflammation") -> "medium"
                                 else -> "low"
                             }
                             val alertMessage = if (selectedSymptoms.isNotEmpty()) {

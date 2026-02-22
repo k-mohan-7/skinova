@@ -34,8 +34,8 @@ fun WelcomeScreen(onGetStartedClick: () -> Unit = {}) {
 
         // Logo
         Image(
-            painter = painterResource(id = R.drawable.logo_new),
-            contentDescription = "DFU Care Logo",
+            painter = painterResource(id = R.drawable.skinova_logo),
+            contentDescription = "Skinova Logo",
             modifier = Modifier
                 .size(180.dp)
                 .padding(bottom = 24.dp),
@@ -44,10 +44,10 @@ fun WelcomeScreen(onGetStartedClick: () -> Unit = {}) {
 
         // Title
         Text(
-            text = "Smart DFU",
+            text = "Skinova",
             style = MaterialTheme.typography.headlineMedium.copy(
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFFFF9800), // Orange color
+                color = Color(0xFF4A90E2),
                 fontSize = 28.sp
             ),
             modifier = Modifier.padding(bottom = 16.dp)
@@ -55,7 +55,7 @@ fun WelcomeScreen(onGetStartedClick: () -> Unit = {}) {
 
         // Description
         Text(
-            text = "Post-Discharge Diabetic Foot\nCare",
+            text = "AI-Powered Skin Care\nMonitoring",
             style = MaterialTheme.typography.bodyLarge.copy(
                 color = Color.Gray,
                 textAlign = TextAlign.Center,

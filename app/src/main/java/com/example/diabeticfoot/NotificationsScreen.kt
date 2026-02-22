@@ -44,7 +44,7 @@ fun NotificationsScreen() {
 
     // Static notifications
     val staticNotifications = listOf(
-        NotificationItem("Sugar Level Alert", "Your sugar level was slightly high today.", "System", Icons.Default.Notifications)
+        NotificationItem("Skin Score Alert", "Your skin condition score was logged today.", "System", Icons.Default.Notifications)
     )
 
     Scaffold(

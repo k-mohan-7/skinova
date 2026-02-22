@@ -42,21 +42,21 @@ fun AnalysisResultScreen(
             Color(0xFFFFEBEE),
             Icons.Outlined.PriorityHigh,
             "High Risk",
-            "Immediate medical attention\nrequired"
+            "Immediate dermatologist consultation\nrequired"
         )
         "Medium" -> ResultStyle(
              Color(0xFFFF9800), // Orange
              Color(0xFFFFF3E0), // Light Orange
              Icons.Filled.Warning,
              "Medium Risk",
-             "Monitor closely and consult\nyour doctor soon"
+             "Monitor closely and consult\nyour dermatologist soon"
         ) 
         else -> ResultStyle(
             Color(0xFF4CAF50), // Green
             Color(0xFFE8F5E9),
             Icons.Filled.Check,
             "Low Risk",
-            "No immediate concerns.\nContinue regular care."
+            "No immediate concerns.\nContinue regular skin care."
         )
     }
     

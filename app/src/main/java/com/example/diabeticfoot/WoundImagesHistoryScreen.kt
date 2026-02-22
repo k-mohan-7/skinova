@@ -41,7 +41,7 @@ fun WoundImagesHistoryScreen(
                 images = imagesList
                 isLoading = false
             }.onFailure {
-                errorMessage = "Failed to load wound images history"
+                errorMessage = "Failed to load skin images history"
                 isLoading = false
             }
         }
@@ -52,7 +52,7 @@ fun WoundImagesHistoryScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Wound Images History",
+                        text = "Skin Images History",
                         style = MaterialTheme.typography.titleLarge.copy(
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFF4A90E2)
@@ -99,7 +99,7 @@ fun WoundImagesHistoryScreen(
                 }
                 images.isEmpty() -> {
                     Text(
-                        text = "No wound images found",
+                        text = "No skin images found",
                         modifier = Modifier
                             .align(Alignment.Center)
                             .padding(16.dp),
@@ -195,7 +195,7 @@ fun WoundImageCard(woundImage: WoundImageDetail) {
                         painter = rememberAsyncImagePainter(
                             com.example.diabeticfoot.api.ApiConfig.getImageUrl(woundImage.imagePath)
                         ),
-                        contentDescription = "Wound Image",
+                        contentDescription = "Skin Image",
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
                     )

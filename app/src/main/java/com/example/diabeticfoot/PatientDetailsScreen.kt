@@ -63,11 +63,13 @@ fun PatientDetailsScreen(
                 if (symptomsList.isNotEmpty()) {
                     val latestSymptom = symptomsList.first()
                     val symptomsText = mutableListOf<String>()
-                    if (latestSymptom.severePain > 0) symptomsText.add("Severe Pain")
-                    if (latestSymptom.moderatePain > 0) symptomsText.add("Moderate Pain")
-                    if (latestSymptom.mildPain > 0) symptomsText.add("Mild Pain")
+                    if (latestSymptom.itching > 0) symptomsText.add("Itching")
+                    if (latestSymptom.rash > 0) symptomsText.add("Rash")
+                    if (latestSymptom.painDiscomfort > 0) symptomsText.add("Pain/Discomfort")
                     if (latestSymptom.swelling > 0) symptomsText.add("Swelling")
-                    if (latestSymptom.rednessColorChange > 0) symptomsText.add("Redness/Color Change")
+                    if (latestSymptom.rednessInflammation > 0) symptomsText.add("Redness/Inflammation")
+                    if (latestSymptom.blistering > 0) symptomsText.add("Blistering")
+                    if (latestSymptom.dryFlakySkin > 0) symptomsText.add("Dry/Flaky Skin")
                     actualSymptoms = symptomsText
                     symptomNotes = latestSymptom.additionalNotes
                     Log.d("PatientDetailsScreen", "Loaded symptoms: $symptomsText, notes: ${latestSymptom.additionalNotes}")
@@ -173,7 +175,7 @@ fun PatientDetailsScreen(
                 }
             }
 
-            // Latest Sugar Level Card
+            // Latest Skin Risk Level Card
             Card(
                 colors = CardDefaults.cardColors(containerColor = Color.White),
                 shape = RoundedCornerShape(16.dp),
@@ -191,7 +193,7 @@ fun PatientDetailsScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Latest Sugar Level",
+                            text = "Latest Skin Risk Level",
                             style = MaterialTheme.typography.bodyMedium.copy(color = Color.Gray)
                         )
                         TextButton(onClick = { onSeeAllSugarReports(patientId) }) {
@@ -205,56 +207,23 @@ fun PatientDetailsScreen(
                         }
                     }
                     Spacer(modifier = Modifier.height(8.dp))
-                    
-                    // Calculate sugar level color
-                    val sugarValue = sugarLevel.toIntOrNull() ?: 0
-                    val sugarBgColor = when {
-                        sugarValue < 70 -> Color(0xFFFFF8E1)  // Yellow shade for low
-                        sugarValue in 70..140 -> Color(0xFFE8F5E9)  // Green shade for normal
-                        sugarValue in 141..200 -> Color(0xFFFFF3E0)  // Orange shade for moderate
-                        else -> Color(0xFFFFEBEE)  // Red shade for high
-                    }
-                    
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(sugarBgColor, RoundedCornerShape(12.dp))
-                            .padding(16.dp)
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = sugarLevel,
-                                style = MaterialTheme.typography.displayMedium.copy(
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.Black
-                                )
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "mg/dL",
-                                style = MaterialTheme.typography.bodyLarge.copy(color = Color.Gray)
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(12.dp))
 
-                    val (bgColor, textColor) = when (riskLevel) {
-                        "Low Risk" -> Color(0xFFE8F5E9) to Color(0xFF4CAF50)
-                        "Medium Risk" -> Color(0xFFFFF8E1) to Color(0xFFFFC107)
-                        "High Risk" -> Color(0xFFFFEBEE) to Color(0xFFF44336)
-                        else -> Color.Gray to Color.White
+                    val (bgColor, textColor) = when (riskLevel.lowercase()) {
+                        "low", "low risk" -> Color(0xFFE8F5E9) to Color(0xFF4CAF50)
+                        "moderate", "medium risk" -> Color(0xFFFFF8E1) to Color(0xFFFFC107)
+                        "high", "high risk" -> Color(0xFFFFEBEE) to Color(0xFFF44336)
+                        "critical" -> Color(0xFFFFEBEE) to Color(0xFFF44336)
+                        else -> Color(0xFFF5F5F5) to Color.Gray
                     }
 
                     Box(
                         modifier = Modifier
                             .background(bgColor, RoundedCornerShape(16.dp))
-                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                            .padding(horizontal = 16.dp, vertical = 10.dp)
                     ) {
                         Text(
-                            text = riskLevel,
-                            style = MaterialTheme.typography.labelMedium.copy(
+                            text = if (riskLevel.isBlank()) "No Data" else riskLevel,
+                            style = MaterialTheme.typography.titleLarge.copy(
                                 fontWeight = FontWeight.Bold,
                                 color = textColor
                             )
@@ -265,7 +234,7 @@ fun PatientDetailsScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Latest Wound Image Card
+            // Latest Skin Image Card
             Card(
                 colors = CardDefaults.cardColors(containerColor = Color.White),
                 shape = RoundedCornerShape(16.dp),
@@ -283,7 +252,7 @@ fun PatientDetailsScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Latest Wound Image",
+                            text = "Latest Skin Image",
                             style = MaterialTheme.typography.bodyMedium.copy(color = Color.Gray)
                         )
                         TextButton(onClick = { onSeeAllImages(patientId) }) {
@@ -325,7 +294,7 @@ fun PatientDetailsScreen(
                             if (latestImageUri != null && latestImageUri != "none") {
                                 Image(
                                     painter = rememberAsyncImagePainter(latestImageUri),
-                                    contentDescription = "Wound Image",
+                                    contentDescription = "Skin Image",
                                     modifier = Modifier.fillMaxSize(),
                                     contentScale = ContentScale.Crop
                                 )

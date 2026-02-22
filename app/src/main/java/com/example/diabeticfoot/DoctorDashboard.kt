@@ -583,7 +583,7 @@ fun PatientCard(patient: Patient, onClick: () -> Unit) {
                 Spacer(modifier = Modifier.height(4.dp))
                 
                 Text(
-                    text = if (patient.lastSugar > 0) "Last Sugar: ${patient.lastSugar} mg/dL" else "Last Sugar: No data",
+                    text = if (patient.lastSugar > 0) "Last Skin Score: ${patient.lastSugar} / 100" else "Last Skin Score: No data",
                     style = MaterialTheme.typography.bodySmall.copy(
                         color = Color.Gray
                     )

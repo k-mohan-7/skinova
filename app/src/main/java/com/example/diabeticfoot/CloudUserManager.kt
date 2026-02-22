@@ -349,7 +349,7 @@ class CloudUserManager(private val context: Context) {
             val patientId = providedPatientId ?: getLoggedInUserId()
             val response = apiService.getSugarLevels(patientId)
             if (response.isSuccessful && response.body()?.success == true) {
-                Result.success(response.body()!!.sugarLevels ?: emptyList())
+                Result.success(response.body()!!.skinScores ?: emptyList())
             } else {
                 Result.failure(Exception("Failed to get sugar levels"))
             }
@@ -360,22 +360,26 @@ class CloudUserManager(private val context: Context) {
     }
     
     suspend fun updateSymptoms(
-        severePain: Boolean,
-        moderatePain: Boolean,
-        mildPain: Boolean,
+        itching: Boolean,
+        rash: Boolean,
+        painDiscomfort: Boolean,
         swelling: Boolean,
-        rednessColorChange: Boolean,
+        rednessInflammation: Boolean,
+        blistering: Boolean,
+        dryFlakySkin: Boolean,
         additionalNotes: String
     ): Result<ApiResponse> = withContext(Dispatchers.IO) {
         try {
             val patientId = getLoggedInUserId()
             val request = SymptomsRequest(
                 patientId = patientId,
-                severePain = if (severePain) 1 else 0,
-                moderatePain = if (moderatePain) 1 else 0,
-                mildPain = if (mildPain) 1 else 0,
+                itching = if (itching) 1 else 0,
+                rash = if (rash) 1 else 0,
+                painDiscomfort = if (painDiscomfort) 1 else 0,
                 swelling = if (swelling) 1 else 0,
-                rednessColorChange = if (rednessColorChange) 1 else 0,
+                rednessInflammation = if (rednessInflammation) 1 else 0,
+                blistering = if (blistering) 1 else 0,
+                dryFlakySkin = if (dryFlakySkin) 1 else 0,
                 additionalNotes = additionalNotes
             )
             val response = apiService.updateSymptoms(request)

@@ -191,12 +191,11 @@ fun PatientHomeScreenContent(
     val coroutineScope = rememberCoroutineScope()
     
     var name by remember { mutableStateOf(cloudUserManager.getUserFullName() ?: "User") }
-    var sugar by remember { mutableIntStateOf(0) }
     var risk by remember { mutableStateOf("No Data") }
     var isLoading by remember { mutableStateOf(true) }
     var doctorAdviceList by remember { mutableStateOf<List<DoctorAdvice>>(emptyList()) }
     
-    // Load latest sugar level and doctor advice from backend
+    // Load latest skin risk from wound images and doctor advice from backend
     LaunchedEffect(Unit) {
         val userId = cloudUserManager.getLoggedInUserId()
         if (userId > 0) {
@@ -210,23 +209,17 @@ fun PatientHomeScreenContent(
                 Log.e("PatientHomeScreen", "Failed to sync profile", it)
             }
             
-            // Load sugar levels
-            cloudUserManager.getSugarLevels().onSuccess { levels ->
-                if (levels.isNotEmpty()) {
-                    val latestSugar = levels.first()
-                    sugar = latestSugar.sugarLevel.toInt()
-                    risk = when {
-                        sugar < 70 -> "Low Risk"
-                        sugar in 70..140 -> "Normal"
-                        sugar in 141..200 -> "High Risk"
-                        else -> "Critical"
-                    }
-                    Log.d("PatientHomeScreen", "Loaded sugar: $sugar from backend")
+            // Load latest skin risk from wound images
+            cloudUserManager.getWoundImagesHistory().onSuccess { images ->
+                if (images.isNotEmpty()) {
+                    val latestImage = images.first()
+                    risk = latestImage.riskLevel ?: "No Data"
+                    Log.d("PatientHomeScreen", "Loaded skin risk: $risk from images")
                 }
                 isLoading = false
             }.onFailure {
                 isLoading = false
-                Log.e("PatientHomeScreen", "Failed to load sugar levels", it)
+                Log.e("PatientHomeScreen", "Failed to load wound images", it)
             }
             
             // Load doctor advice
@@ -241,7 +234,7 @@ fun PatientHomeScreenContent(
         }
     }
     
-    Log.d("PatientHomeScreen", "Displaying dashboard for: $name, Sugar: $sugar, Risk: $risk")
+    Log.d("PatientHomeScreen", "Displaying dashboard for: $name, Skin Risk: $risk")
 
     Column(
 
@@ -292,36 +285,42 @@ fun PatientHomeScreenContent(
                             style = MaterialTheme.typography.labelLarge.copy(color = Color.Gray)
                         )
                         Spacer(modifier = Modifier.height(8.dp))
-                        Row(verticalAlignment = Alignment.Bottom) {
-                            Text(
-                                text = if (sugar == 0) "--" else "$sugar",
-                                style = MaterialTheme.typography.displayMedium.copy(
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.Black
-                                )
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "mg/dL",
-                                style = MaterialTheme.typography.bodyMedium.copy(
-                                    color = Color.Gray
-                                ),
-                                modifier = Modifier.padding(bottom = 8.dp)
-                            )
-                        }
-                        Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = risk,
-                            style = MaterialTheme.typography.bodyMedium.copy(
-                                fontWeight = FontWeight.Medium,
-                                color = when (risk) {
-                                    "Low Risk", "Normal" -> Color(0xFF4CAF50)
-                                    "High Risk" -> Color(0xFFFF9800)
-                                    "Critical" -> Color(0xFFF44336)
-                                    else -> Color.Gray
-                                }
+                            text = "Skin Infection Risk",
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = Color.Black
                             )
                         )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Box(
+                            modifier = Modifier
+                                .background(
+                                    color = when (risk) {
+                                        "Low", "Low Risk" -> Color(0xFFE8F5E9)
+                                        "Moderate", "Medium Risk" -> Color(0xFFFFF3E0)
+                                        "High", "High Risk" -> Color(0xFFFFEBEE)
+                                        "Critical" -> Color(0xFFFFEBEE)
+                                        else -> Color(0xFFF5F5F5)
+                                    },
+                                    shape = RoundedCornerShape(20.dp)
+                                )
+                                .padding(horizontal = 14.dp, vertical = 6.dp)
+                        ) {
+                            Text(
+                                text = if (risk == "No Data") "No Data" else risk,
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    color = when (risk) {
+                                        "Low", "Low Risk" -> Color(0xFF4CAF50)
+                                        "Moderate", "Medium Risk" -> Color(0xFFFF9800)
+                                        "High", "High Risk" -> Color(0xFFF44336)
+                                        "Critical" -> Color(0xFFF44336)
+                                        else -> Color.Gray
+                                    }
+                                )
+                            )
+                        }
                     }
                     
                     // Pulse Icon representation in a container
@@ -403,8 +402,8 @@ fun PatientHomeScreenContent(
                 icon = Icons.Rounded.WaterDrop,
                 iconBgColor = Color(0xFFEAF5FD),
                 iconTint = Color(0xFF4A90E2),
-                title = "Check Sugar Level",
-                subtitle = "Before breakfast",
+                title = "Daily Skin Log",
+                subtitle = "Log your skin condition",
                 onClick = onSugarLevelClick
             )
             
@@ -414,8 +413,8 @@ fun PatientHomeScreenContent(
                 icon = Icons.Rounded.PhotoCamera,
                 iconBgColor = Color(0xFFF3E5F5),
                 iconTint = Color(0xFF9C27B0),
-                title = "Upload Wound Image",
-                subtitle = "Daily check-up",
+                title = "Upload Skin Image",
+                subtitle = "Daily skin check-up",
                 onClick = onUploadImageClick
             )
 
@@ -428,6 +427,17 @@ fun PatientHomeScreenContent(
                 title = "Update Symptoms",
                 subtitle = "How do you feel?",
                 onClick = onSymptomsClick
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            TaskCard(
+                icon = Icons.Rounded.MedicalServices,
+                iconBgColor = Color(0xFFE8F5E9),
+                iconTint = Color(0xFF4CAF50),
+                title = "Check Doctor's Advice",
+                subtitle = "View today's advice",
+                onClick = onDoctorAdviceClick
             )
 
             Spacer(modifier = Modifier.height(32.dp))

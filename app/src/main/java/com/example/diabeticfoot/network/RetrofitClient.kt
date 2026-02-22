@@ -5,7 +5,7 @@ import retrofit2.converter.gson.GsonConverterFactory
 
 object RetrofitClient {
 
-    private const val BASE_URL = "http://192.168.1.48/diabetic_foot_api/"
+    private const val BASE_URL = "http://192.168.1.64/skinova_api/"
     // use PC IP if real device
 
     val api: ApiService by lazy {

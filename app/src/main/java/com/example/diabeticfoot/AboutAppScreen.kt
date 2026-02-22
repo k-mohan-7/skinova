@@ -74,7 +74,7 @@ fun AboutAppScreen(
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Text(
-                        text = "DFU",
+                        text = "SKN",
                         style = MaterialTheme.typography.headlineMedium.copy(
                             fontWeight = FontWeight.ExtraBold,
                             color = Color(0xFF4A90E2)
@@ -86,7 +86,7 @@ fun AboutAppScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             Text(
-                text = "DFU CARE",
+                text = "SKINOVA",
                 style = MaterialTheme.typography.headlineMedium.copy(
                     fontWeight = FontWeight.Bold,
                     color = Color.Black
@@ -103,7 +103,7 @@ fun AboutAppScreen(
             Spacer(modifier = Modifier.height(32.dp))
 
             Text(
-                text = "DFU CARE is a comprehensive mobile solution designed to assist patients with Diabetic Foot Ulcers in monitoring their healing progress and communicating with healthcare professionals.",
+                text = "Skinova is a comprehensive AI-powered mobile solution designed to assist patients in monitoring skin conditions, tracking symptoms, and communicating with dermatologists for timely care and treatment.",
                 style = MaterialTheme.typography.bodyLarge.copy(
                     textAlign = TextAlign.Center,
                     lineHeight = 24.sp,
@@ -118,14 +118,14 @@ fun AboutAppScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             // Feature List or Additional Info
-            AboutItem(title = "Developed by", description = "DFU Care Team")
-            AboutItem(title = "Contact Support", description = "support@dfucare.com")
-            AboutItem(title = "Website", description = "www.dfucare.com")
+            AboutItem(title = "Developed by", description = "Skinova Team")
+            AboutItem(title = "Contact Support", description = "support@skinova.com")
+            AboutItem(title = "Website", description = "www.skinova.com")
 
             Spacer(modifier = Modifier.height(32.dp))
 
             Text(
-                text = "© 2026 DFU CARE. All rights reserved.",
+                text = "© 2026 SKINOVA. All rights reserved.",
                 style = MaterialTheme.typography.bodySmall.copy(
                     color = Color.LightGray
                 )

@@ -98,7 +98,7 @@ fun PrivacyPolicyScreen(
                 iconBgColor = Color(0xFFE3F2FD), // Keeping blue theme consistent or use light blue
                 iconTint = Color(0xFF4A90E2),
                 title = "Medical Usage",
-                description = "Wound images and health details are collected strictly for the purpose of monitoring your condition and treatment progress."
+                description = "Skin images and health details are collected strictly for the purpose of monitoring your condition and treatment progress."
             )
 
             PrivacyCard(

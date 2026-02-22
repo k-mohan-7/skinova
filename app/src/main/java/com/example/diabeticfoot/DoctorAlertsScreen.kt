@@ -389,8 +389,8 @@ private fun formatTime(dateTimeString: String): String {
 
 private fun getAlertTypeLabel(type: String): String {
     return when (type) {
-        "wound" -> "Wound Update"
-        "sugar_level" -> "Sugar Level"
+        "wound" -> "Skin Image Update"
+        "sugar_level" -> "Skin Score"
         "symptom" -> "New Symptom"
         "emergency" -> "Emergency Alert"
         else -> "Alert"

@@ -48,7 +48,7 @@ fun ConfirmSugarLevelScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Confirm Sugar Level",
+                        text = "Confirm Skin Score",
                         style = MaterialTheme.typography.titleLarge.copy(
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFF4A90E2)
@@ -103,7 +103,7 @@ fun ConfirmSugarLevelScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "Please confirm your sugar level reading",
+                text = "Please confirm your skin condition score",
                 style = MaterialTheme.typography.bodyMedium.copy(
                     color = Color(0xFF666666)
                 ),
@@ -124,7 +124,7 @@ fun ConfirmSugarLevelScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "Sugar Level",
+                        text = "Skin Score",
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFF666666)
@@ -132,7 +132,7 @@ fun ConfirmSugarLevelScreen(
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        text = "${sugarLevel.toInt()} mg/dL",
+                        text = "${sugarLevel.toInt()} / 100",
                         style = MaterialTheme.typography.displayMedium.copy(
                             fontWeight = FontWeight.Bold,
                             color = riskLevel.second,
@@ -230,7 +230,7 @@ fun ConfirmSugarLevelScreen(
                                 sugarLevel in 141.0..200.0 -> "Elevated"
                                 else -> "High"
                             }
-                            val alertMessage = "Sugar level recorded: ${sugarLevel.toInt()} mg/dL ($statusText)"
+                            val alertMessage = "Skin score recorded: ${sugarLevel.toInt()} / 100 ($statusText)"
                             cloudUserManager.createAlert(
                                 patientId = cloudUserManager.getLoggedInUserId(),
                                 alertType = "sugar_level",
@@ -242,7 +242,7 @@ fun ConfirmSugarLevelScreen(
                             onConfirmClick()
                         }.onFailure { e ->
                             isSubmitting = false
-                            errorMessage = e.message ?: "Failed to save sugar level"
+                            errorMessage = e.message ?: "Failed to save skin score"
                         }
                     }
                 },

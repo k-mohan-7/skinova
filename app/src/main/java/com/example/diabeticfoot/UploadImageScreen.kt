@@ -82,7 +82,7 @@ fun UploadImageScreen(
     var isChecking by remember { mutableStateOf(false) }
     var isValid by remember { mutableStateOf(false) }
     var isUploading by remember { mutableStateOf(false) }
-    val validator = remember { FootImageValidator(context) }
+    val validator = remember { SkinImageValidator(context) }
     
     // Observe lifecycle to refresh data when screen becomes visible
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -133,7 +133,7 @@ fun UploadImageScreen(
                     isValid = success
                     isChecking = false
                     if (!success) {
-                        Toast.makeText(context, "Please upload a clear foot or wound image.", Toast.LENGTH_LONG).show()
+                        Toast.makeText(context, "Please upload a clear skin image.", Toast.LENGTH_LONG).show()
                     }
                 }
             } catch (e: Exception) {
@@ -224,9 +224,9 @@ fun UploadImageScreen(
                 onClick = {
                     if (selectedImageUri != null) {
                         isUploading = true
-                        var classifier: DFUSeverityClassifier? = null
+                        var classifier: SkinConditionClassifier? = null
                         try {
-                            classifier = DFUSeverityClassifier(context)
+                            classifier = SkinConditionClassifier(context)
                             
                             val bitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                                 android.graphics.ImageDecoder.decodeBitmap(
@@ -369,7 +369,7 @@ fun UploadImageScreen(
                 Spacer(modifier = Modifier.height(16.dp))
                 
                 Text(
-                    text = "Today's Wound Image",
+                    text = "Today's Skin Image",
                     style = MaterialTheme.typography.headlineSmall.copy(
                         fontWeight = FontWeight.Bold,
                         color = Color.Black
@@ -392,7 +392,7 @@ fun UploadImageScreen(
                             painter = rememberAsyncImagePainter(
                                 com.example.diabeticfoot.api.ApiConfig.getImageUrl(imageData.imagePath)
                             ),
-                            contentDescription = "Wound Image",
+                            contentDescription = "Skin Image",
                             modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Crop
                         )
@@ -499,7 +499,7 @@ fun UploadImageScreen(
                     .padding(16.dp)
             ) {
                 Text(
-                    text = "Please upload one clear wound image\nper day for accurate analysis.",
+                    text = "Please upload one clear skin image\nper day for accurate analysis.",
                     style = MaterialTheme.typography.bodyMedium.copy(
                         color = Color(0xFF4A90E2),
                         textAlign = TextAlign.Center

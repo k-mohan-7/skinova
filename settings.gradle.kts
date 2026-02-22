@@ -19,6 +19,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "DIABETICFoot"
+rootProject.name = "Skinova"
 include(":app")
  

@@ -64,8 +64,8 @@ fun DoctorNotificationsScreen(
             type = NotificationType.PATIENT_UPDATE
         ),
         DoctorNotification(
-            title = "Abnormal Sugar Level",
-            description = "Patient reported elevated blood sugar levels. Review recommended.",
+            title = "Abnormal Skin Score",
+            description = "Patient reported an unusual skin condition score. Review recommended.",
             timestamp = "Yesterday",
             type = NotificationType.ABNORMAL_SUGAR
         )

@@ -9,10 +9,10 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.channels.FileChannel
 
-class DFUSeverityClassifier(private val context: Context) {
+class SkinConditionClassifier(private val context: Context) {
     
     private var interpreter: Interpreter? = null
-    private val modelFileName = "dfu_model_final_with_high_accu_hand_leg.tflite"  // High accuracy hand/leg model
+    private val modelFileName = "dfu_model_final_with_high_accu_hand_leg.tflite"  // Model for skin condition analysis
     
     // Model specifications
     private val inputSize = 224
@@ -20,7 +20,7 @@ class DFUSeverityClassifier(private val context: Context) {
     private val imageMean = 0f
     private val imageStd = 255f
     
-    // Class labels - matches training: High, Low, Moderate
+    // Class labels - matches training: High, Low, Moderate severity
     private val labels = arrayOf("High", "Low", "Moderate")
     
     init {
@@ -43,11 +43,11 @@ class DFUSeverityClassifier(private val context: Context) {
             }
             
             interpreter = Interpreter(modelBuffer, options)
-            Log.d("DFUClassifier", "✅ Model loaded successfully - TFLite 2.15.0")
-            Log.d("DFUClassifier", "Model has ${interpreter?.inputTensorCount} inputs and ${interpreter?.outputTensorCount} outputs")
+            Log.d("SkinConditionClassifier", "✅ Model loaded successfully - TFLite 2.15.0")
+            Log.d("SkinConditionClassifier", "Model has ${interpreter?.inputTensorCount} inputs and ${interpreter?.outputTensorCount} outputs")
         } catch (e: Exception) {
-            Log.e("DFUClassifier", "Error loading model: ${e.message}", e)
-            Log.e("DFUClassifier", "Stack trace:", e)
+            Log.e("SkinConditionClassifier", "Error loading model: ${e.message}", e)
+            Log.e("SkinConditionClassifier", "Stack trace:", e)
         }
     }
     
@@ -80,8 +80,8 @@ class DFUSeverityClassifier(private val context: Context) {
             val confidence = probabilities[maxIndex]
             val severityLevel = labels[maxIndex]
             
-            Log.d("DFUClassifier", "Classification: $severityLevel with confidence $confidence")
-            Log.d("DFUClassifier", "All probabilities: High=${probabilities[0]}, Low=${probabilities[1]}, Moderate=${probabilities[2]}")
+            Log.d("SkinConditionClassifier", "Classification: $severityLevel with confidence $confidence")
+            Log.d("SkinConditionClassifier", "All probabilities: High=${probabilities[0]}, Low=${probabilities[1]}, Moderate=${probabilities[2]}")
             
             return ClassificationResult(
                 severityLevel = severityLevel,
@@ -91,7 +91,7 @@ class DFUSeverityClassifier(private val context: Context) {
             )
             
         } catch (e: Exception) {
-            Log.e("DFUClassifier", "Classification error: ${e.message}", e)
+            Log.e("SkinConditionClassifier", "Classification error: ${e.message}", e)
             return ClassificationResult("Error", 0f, "Classification failed: ${e.message}", "High")
         }
     }
@@ -122,10 +122,10 @@ class DFUSeverityClassifier(private val context: Context) {
         val confidencePercent = (confidence * 100).toInt()
         
         return when (severity) {
-            "Low" -> "Low severity wound detected ($confidencePercent% confidence). Monitor regularly and maintain basic wound care."
-            "Moderate" -> "Moderate severity wound detected ($confidencePercent% confidence). Consult healthcare provider for proper treatment."
-            "High" -> "High severity wound detected ($confidencePercent% confidence). URGENT: Seek immediate medical attention!"
-            else -> "Unable to classify wound. Please try again with a clearer image."
+            "Low" -> "Low severity skin condition detected ($confidencePercent% confidence). Monitor regularly and maintain basic skincare routine."
+            "Moderate" -> "Moderate severity skin condition detected ($confidencePercent% confidence). Consult dermatologist for proper treatment."
+            "High" -> "High severity skin condition detected ($confidencePercent% confidence). URGENT: Seek immediate medical attention!"
+            else -> "Unable to classify skin condition. Please try again with a clearer image."
         }
     }
     

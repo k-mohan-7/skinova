@@ -56,10 +56,10 @@ fun SugarLevelScreen(
         val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
         cloudUserManager.getSugarLevels().onSuccess { levels ->
             val todaysRecord = levels.find { 
-                it.measurementDate == today
+                it.logDate == today
             }
             if (todaysRecord != null) {
-                todaysSugarValue = todaysRecord.sugarLevel.toInt().toInt().toString()
+                todaysSugarValue = todaysRecord.skinScore.toInt().toInt().toString()
                 isEditMode = false // Start in view mode
             } else {
                 todaysSugarValue = null
@@ -77,7 +77,7 @@ fun SugarLevelScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Log Sugar Level",
+                        text = "Daily Skin Log",
                         style = MaterialTheme.typography.titleMedium.copy(
                             color = Color(0xFF1976D2), // Medium Blue
                             fontWeight = FontWeight.Bold
@@ -161,7 +161,7 @@ fun SugarLevelScreen(
                 Spacer(modifier = Modifier.height(24.dp))
                 
                 Text(
-                    text = "Today's Sugar Level",
+                    text = "Today's Skin Condition Score",
                     style = MaterialTheme.typography.headlineSmall.copy(
                         fontWeight = FontWeight.Bold,
                         color = Color.Black
@@ -190,7 +190,7 @@ fun SugarLevelScreen(
                             )
                         )
                         Text(
-                            text = "mg/dL",
+                            text = "/ 100",
                             style = MaterialTheme.typography.titleMedium.copy(
                                 color = Color.Gray
                             )
@@ -240,7 +240,7 @@ fun SugarLevelScreen(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Update Sugar Level",
+                        text = "Update Skin Condition Score",
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.Bold
                         )
@@ -285,7 +285,7 @@ fun SugarLevelScreen(
             Spacer(modifier = Modifier.height(32.dp))
 
             Text(
-                text = "Enter Reading",
+                text = "Enter Skin Score",
                 style = MaterialTheme.typography.headlineSmall.copy(
                     fontWeight = FontWeight.Bold,
                     color = Color.Black
@@ -295,7 +295,7 @@ fun SugarLevelScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "Please enter your blood sugar level from your glucometer. No glucometer? Check at a nearby clinic or medical shop.",
+                text = "Rate your skin condition today on a scale of 1–100. (100 = Perfectly healthy skin, 1 = Severe condition)",
                 style = MaterialTheme.typography.bodyMedium.copy(
                     color = Color.Gray,
                     textAlign = TextAlign.Center
@@ -378,7 +378,7 @@ fun SugarLevelScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text = "Sugar level saved successfully!",
+                        text = "Skin score saved successfully!",
                         style = MaterialTheme.typography.bodyMedium.copy(
                             color = Color.White,
                             textAlign = TextAlign.Center

@@ -40,7 +40,7 @@ fun SugarLevelHistoryScreen(
                 sugarLevels = levels
                 isLoading = false
             }.onFailure {
-                errorMessage = "Failed to load sugar level history"
+                errorMessage = "Failed to load skin condition score history"
                 isLoading = false
             }
         }
@@ -51,7 +51,7 @@ fun SugarLevelHistoryScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Sugar Level Reports",
+                        text = "Skin Condition Score Reports",
                         style = MaterialTheme.typography.titleLarge.copy(
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFF4A90E2)
@@ -98,7 +98,7 @@ fun SugarLevelHistoryScreen(
                 }
                 sugarLevels.isEmpty() -> {
                     Text(
-                        text = "No sugar level records found",
+                        text = "No skin condition score records found",
                         modifier = Modifier
                             .align(Alignment.Center)
                             .padding(16.dp),
@@ -128,12 +128,12 @@ fun SugarLevelCard(sugarLevel: SugarLevel) {
     val timeFormat = SimpleDateFormat("hh:mm a", Locale.getDefault())
     
     // Determine color based on sugar value
-    val sugarValue = sugarLevel.sugarLevel.toInt()
+    val sugarValue = sugarLevel.skinScore.toInt()
     val (bgColor, statusText) = when {
-        sugarValue < 70 -> Color(0xFFFFF8E1) to "Low"
-        sugarValue in 70..140 -> Color(0xFFE8F5E9) to "Normal"
-        sugarValue in 141..200 -> Color(0xFFFFF3E0) to "Moderate"
-        else -> Color(0xFFFFEBEE) to "High"
+        sugarValue < 40 -> Color(0xFFFFEBEE) to "Poor"
+        sugarValue in 40..60 -> Color(0xFFFFF3E0) to "Moderate"
+        sugarValue in 61..80 -> Color(0xFFFFF8E1) to "Good"
+        else -> Color(0xFFE8F5E9) to "Excellent"
     }
     
     Card(
@@ -151,7 +151,7 @@ fun SugarLevelCard(sugarLevel: SugarLevel) {
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "${sugarLevel.sugarLevel.toInt()} mg/dL",
+                    text = "Score: ${sugarLevel.skinScore.toInt()} / 100",
                     style = MaterialTheme.typography.headlineSmall.copy(
                         fontWeight = FontWeight.Bold,
                         color = Color.Black
@@ -159,7 +159,7 @@ fun SugarLevelCard(sugarLevel: SugarLevel) {
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = sugarLevel.measurementDate,
+                    text = sugarLevel.logDate,
                     style = MaterialTheme.typography.bodyMedium.copy(
                         color = Color.Gray
                     )

@@ -142,11 +142,13 @@ fun SymptomCard(symptom: SymptomDetail) {
             Spacer(modifier = Modifier.height(12.dp))
             
             val symptomsList = buildList {
-                if (symptom.severePain == 1) add("Severe Pain")
-                if (symptom.moderatePain == 1) add("Moderate Pain")
-                if (symptom.mildPain == 1) add("Mild Pain")
+                if (symptom.itching == 1) add("Itching")
+                if (symptom.rash == 1) add("Rash")
+                if (symptom.painDiscomfort == 1) add("Pain/Discomfort")
                 if (symptom.swelling == 1) add("Swelling")
-                if (symptom.rednessColorChange == 1) add("Redness/Color Change")
+                if (symptom.rednessInflammation == 1) add("Redness/Inflammation")
+                if (symptom.blistering == 1) add("Blistering")
+                if (symptom.dryFlakySkin == 1) add("Dry/Flaky Skin")
             }
             
             if (symptomsList.isNotEmpty()) {
