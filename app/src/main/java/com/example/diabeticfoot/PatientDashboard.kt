@@ -155,7 +155,6 @@ fun PatientDashboard(
         Box(modifier = Modifier.padding(innerPadding)) {
             when (selectedTab) {
                 0 -> PatientHomeScreenContent(
-                    onSugarLevelClick = onSugarLevelClick,
                     onUploadImageClick = onUploadImageClick,
                     onSymptomsClick = onSymptomsClick,
                     onDoctorAdviceClick = onDoctorAdviceClick,
@@ -180,7 +179,6 @@ fun PatientDashboard(
 
 @Composable
 fun PatientHomeScreenContent(
-    onSugarLevelClick: () -> Unit,
     onUploadImageClick: () -> Unit,
     onSymptomsClick: () -> Unit,
     onDoctorAdviceClick: () -> Unit,
@@ -265,42 +263,83 @@ fun PatientHomeScreenContent(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Current Status Card
+            // Current Status Card — dynamic messages based on latest AI skin analysis
             Card(
                 colors = CardDefaults.cardColors(containerColor = Color.White),
                 shape = RoundedCornerShape(16.dp),
                 modifier = Modifier.fillMaxWidth().shadow(4.dp, RoundedCornerShape(16.dp)),
                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
             ) {
-                Row(
+                Column(
                     modifier = Modifier
                         .padding(20.dp)
-                        .fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
+                        .fillMaxWidth()
                 ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Current Status",
-                            style = MaterialTheme.typography.labelLarge.copy(color = Color.Gray)
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "Skin Infection Risk",
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                fontWeight = FontWeight.Bold,
-                                color = Color.Black
+                    // Header row with icon
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column {
+                            Text(
+                                text = "Current Status",
+                                style = MaterialTheme.typography.labelLarge.copy(color = Color.Gray)
                             )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Today's Skin Health",
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.Black
+                                )
+                            )
+                        }
+                        Surface(
+                            shape = CircleShape,
+                            color = when (risk) {
+                                "High", "High Risk", "Critical" -> Color(0xFFFFEBEE)
+                                "Moderate", "Medium Risk" -> Color(0xFFFFF3E0)
+                                "Low", "Low Risk" -> Color(0xFFE8F5E9)
+                                else -> Color(0xFFF5F5F5)
+                            },
+                            modifier = Modifier.size(52.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Rounded.MonitorHeart,
+                                    contentDescription = "Skin Status",
+                                    tint = when (risk) {
+                                        "High", "High Risk", "Critical" -> Color(0xFFF44336)
+                                        "Moderate", "Medium Risk" -> Color(0xFFFF9800)
+                                        "Low", "Low Risk" -> Color(0xFF4CAF50)
+                                        else -> Color(0xFF9E9E9E)
+                                    },
+                                    modifier = Modifier.size(28.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier
+                                .size(24.dp)
+                                .align(Alignment.CenterHorizontally),
+                            color = Color(0xFF4A90E2),
+                            strokeWidth = 2.dp
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
+                    } else {
+                        // Risk Level Badge
                         Box(
                             modifier = Modifier
                                 .background(
                                     color = when (risk) {
                                         "Low", "Low Risk" -> Color(0xFFE8F5E9)
                                         "Moderate", "Medium Risk" -> Color(0xFFFFF3E0)
-                                        "High", "High Risk" -> Color(0xFFFFEBEE)
-                                        "Critical" -> Color(0xFFFFEBEE)
+                                        "High", "High Risk", "Critical" -> Color(0xFFFFEBEE)
                                         else -> Color(0xFFF5F5F5)
                                     },
                                     shape = RoundedCornerShape(20.dp)
@@ -308,37 +347,59 @@ fun PatientHomeScreenContent(
                                 .padding(horizontal = 14.dp, vertical = 6.dp)
                         ) {
                             Text(
-                                text = if (risk == "No Data") "No Data" else risk,
+                                text = when (risk) {
+                                    "No Data", "" -> "No Scan Yet"
+                                    else -> risk
+                                },
                                 style = MaterialTheme.typography.bodyMedium.copy(
                                     fontWeight = FontWeight.Bold,
                                     color = when (risk) {
                                         "Low", "Low Risk" -> Color(0xFF4CAF50)
                                         "Moderate", "Medium Risk" -> Color(0xFFFF9800)
-                                        "High", "High Risk" -> Color(0xFFF44336)
-                                        "Critical" -> Color(0xFFF44336)
+                                        "High", "High Risk", "Critical" -> Color(0xFFF44336)
                                         else -> Color.Gray
                                     }
                                 )
                             )
                         }
-                    }
-                    
-                    // Pulse Icon representation in a container
-                    Surface(
-                        shape = CircleShape,
-                        color = Color(0xFFF5F5F5),
-                        modifier = Modifier.size(56.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Rounded.MonitorHeart,
-                                contentDescription = "Heartbeat",
-                                tint = when(risk) {
-                                    "High Risk", "Critical" -> Color(0xFFF44336)
-                                    "Medium Risk" -> Color(0xFFFFC107)
-                                    else -> Color(0xFF4CAF50)
-                                },
-                                modifier = Modifier.size(32.dp)
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // Descriptive status message
+                        val msgText = when (risk) {
+                            "Low", "Low Risk" ->
+                                "Your skin is looking great today! Keep up your skincare routine. 🌟"
+                            "Moderate", "Medium Risk" ->
+                                "Your skin needs some attention. Monitor closely and consider consulting your dermatologist."
+                            "High", "High Risk", "Critical" ->
+                                "⚠️ High risk detected! Please follow your doctor's precautions and seek medical attention immediately."
+                            else ->
+                                "No recent scan found. Upload a skin image to get your risk assessment."
+                        }
+                        val msgColor = when (risk) {
+                            "Low", "Low Risk" -> Color(0xFF2E7D32)
+                            "Moderate", "Medium Risk" -> Color(0xFFE65100)
+                            "High", "High Risk", "Critical" -> Color(0xFFC62828)
+                            else -> Color.Gray
+                        }
+                        val msgBg = when (risk) {
+                            "Low", "Low Risk" -> Color(0xFFF1F8E9)
+                            "Moderate", "Medium Risk" -> Color(0xFFFFF8E1)
+                            "High", "High Risk", "Critical" -> Color(0xFFFFEBEE)
+                            else -> Color(0xFFF5F5F5)
+                        }
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(msgBg, RoundedCornerShape(8.dp))
+                                .padding(12.dp)
+                        ) {
+                            Text(
+                                text = msgText,
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    color = msgColor,
+                                    lineHeight = 18.sp
+                                )
                             )
                         }
                     }
@@ -395,17 +456,6 @@ fun PatientHomeScreenContent(
                     )
                 )
             }
-            
-            Spacer(modifier = Modifier.height(16.dp))
-
-            TaskCard(
-                icon = Icons.Rounded.WaterDrop,
-                iconBgColor = Color(0xFFEAF5FD),
-                iconTint = Color(0xFF4A90E2),
-                title = "Daily Skin Log",
-                subtitle = "Log your skin condition",
-                onClick = onSugarLevelClick
-            )
             
             Spacer(modifier = Modifier.height(16.dp))
 

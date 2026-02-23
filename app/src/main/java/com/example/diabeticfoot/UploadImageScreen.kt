@@ -133,7 +133,7 @@ fun UploadImageScreen(
                     isValid = success
                     isChecking = false
                     if (!success) {
-                        Toast.makeText(context, "Please upload a clear skin image.", Toast.LENGTH_LONG).show()
+                        Toast.makeText(context, "Not a skin image detected. Please upload or capture a clear photo of your skin.", Toast.LENGTH_LONG).show()
                     }
                 }
             } catch (e: Exception) {
@@ -545,16 +545,22 @@ fun UploadImageScreen(
                          Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Icon(
                                 imageVector = Icons.Default.Warning,
-
                                 contentDescription = "Invalid",
                                 tint = Color.Red,
                                 modifier = Modifier.size(48.dp)
                             )
+                            Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "Not a foot image",
+                                text = "Not a skin image",
                                 color = Color.Red,
                                 fontWeight = FontWeight.Bold,
-                                modifier = Modifier.background(Color.White.copy(alpha=0.7f), RoundedCornerShape(4.dp)).padding(4.dp)
+                                modifier = Modifier.background(Color.White.copy(alpha = 0.85f), RoundedCornerShape(4.dp)).padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                            Text(
+                                text = "Please upload a clear skin photo",
+                                color = Color.Red,
+                                style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.background(Color.White.copy(alpha = 0.85f), RoundedCornerShape(4.dp)).padding(horizontal = 8.dp, vertical = 2.dp)
                             )
                         }
                     }

@@ -448,47 +448,92 @@ fun DoctorHomeScreenContent(
             Spacer(modifier = Modifier.height(24.dp))
             
             // Visits Planned Section in dedicated box
-            if (!isLoadingVisits && scheduledVisits.isNotEmpty()) {
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    shape = RoundedCornerShape(16.dp),
+            Card(
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .wrapContentHeight(),
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            ) {
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .wrapContentHeight(),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                        .padding(20.dp)
                 ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(20.dp)
-                    ) {
-                        Text(
-                            text = "Visits Planned",
-                            style = MaterialTheme.typography.titleLarge.copy(
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF4A90E2)
-                            )
+                    Text(
+                        text = "Visits Planned",
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF4A90E2)
                         )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        // Show all visits with status messages
-                        scheduledVisits.forEachIndexed { index, visit ->
-                            VisitCardWithStatus(
-                                visit = visit,
-                                onClick = { 
-                                    selectedVisit = visit
-                                    showVisitDialog = true
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    when {
+                        isLoadingVisits -> {
+                            Box(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(
+                                    color = Color(0xFF4A90E2),
+                                    modifier = Modifier.size(28.dp),
+                                    strokeWidth = 3.dp
+                                )
+                            }
+                        }
+                        scheduledVisits.isEmpty() -> {
+                            Box(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text(
+                                        text = "📅",
+                                        style = MaterialTheme.typography.headlineMedium
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = "No visits scheduled",
+                                        style = MaterialTheme.typography.bodyLarge.copy(
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = Color(0xFF666666)
+                                        )
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = "Upcoming patient visits will appear here",
+                                        style = MaterialTheme.typography.bodyMedium.copy(
+                                            color = Color(0xFF999999)
+                                        ),
+                                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                    )
                                 }
-                            )
-                            if (index < scheduledVisits.size - 1) {
-                                Spacer(modifier = Modifier.height(12.dp))
+                            }
+                        }
+                        else -> {
+                            // Show all visits with status messages
+                            scheduledVisits.forEachIndexed { index, visit ->
+                                VisitCardWithStatus(
+                                    visit = visit,
+                                    onClick = {
+                                        selectedVisit = visit
+                                        showVisitDialog = true
+                                    }
+                                )
+                                if (index < scheduledVisits.size - 1) {
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                }
                             }
                         }
                     }
                 }
-                
-                Spacer(modifier = Modifier.height(24.dp))
             }
+
+            Spacer(modifier = Modifier.height(24.dp))
         }
         
         // Visit Management Dialog

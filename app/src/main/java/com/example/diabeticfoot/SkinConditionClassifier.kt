@@ -12,7 +12,7 @@ import java.nio.channels.FileChannel
 class SkinConditionClassifier(private val context: Context) {
     
     private var interpreter: Interpreter? = null
-    private val modelFileName = "dfu_model_final_with_high_accu_hand_leg.tflite"  // Model for skin condition analysis
+    private val modelFileName = "skinova_model1.tflite"  // Skinova AI model for skin condition analysis
     
     // Model specifications
     private val inputSize = 224
